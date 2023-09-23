@@ -78,12 +78,17 @@ fn main() {
 }
 
 fn add(code: &Option<String>, alias: &Option<String>) {
+    let x = alias.clone().unwrap();
+    let y = code.clone().unwrap();
     // create a storage file if it does not exist
-    let data = format!("{}:{}\n", 
-                       alias.clone().unwrap(), 
-                       code.clone().unwrap());
+    let data = format!("{}:{}\n", x, y);
     
     if file_exists() == true {
+        // check if alias already exists and return error message
+        if alias_exists(&x) == true {
+            println!("Alias already exists, please select another one");
+            std::process::exit(1);
+        }
         let mut data_file = OpenOptions::new()
             .append(true)
             .open(FILE_CODES)
@@ -92,7 +97,7 @@ fn add(code: &Option<String>, alias: &Option<String>) {
             .write(data.as_bytes())
             .expect("write failed");
     } else {
-        std::fs::write(FILE_CODES, data).expect("create failed");
+        write_to_file(&data);
     }
     match code {
         Some(code) => { generate_otp(&code); },
@@ -118,7 +123,7 @@ fn remove(alias: &Option<String>) {
                     }
                 }
             }
-            std::fs::write(FILE_CODES, data).expect("remove failed");
+            write_to_file(&data);
         }
     } else {
         println!("Codes file does not exist. First add a code.");
@@ -145,6 +150,25 @@ fn get(alias: &Option<String>) {
 
 fn file_exists() -> bool {
     Path::new(FILE_CODES).exists()
+}
+
+fn alias_exists(alias: &str) -> bool {
+    // read codes file and search for alias
+    if let Ok(lines) = read_lines(FILE_CODES) {
+        for line in lines {
+            if let Ok(l) = line {
+                let x: Vec<_> = l.split(":").collect();
+                if x[0] == alias {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+fn write_to_file(data: &str) {
+    std::fs::write(FILE_CODES, data).expect("write failed");
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
