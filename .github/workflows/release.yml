@@ -33,14 +33,14 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4.1.0
 
     - name: Set the version
       id: version
       run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
 
     - name: Install Rust
-      uses: actions-rs/toolchain@v1
+      uses: actions-rs/toolchain@v1.0.6
       with:
         toolchain: stable
         override: true
@@ -67,5 +67,5 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: target/release/${{ matrix.artifact_name }}
-        asset_name: ${{ asset_name }}
+        asset_name: ${{ matrix.asset_name }}
         tag: ${{ github.ref }}
