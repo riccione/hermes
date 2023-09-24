@@ -8,12 +8,6 @@
 *** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
 *** https://www.markdownguide.org/basic-syntax/#reference-style-links
 -->
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-
 <div align="center">
   <h3 align="center">Hermes - CLI OTP app</h3>
 </div>
@@ -85,9 +79,12 @@ Remove record
 or
 `hermes remove -a <alias>`
 
-Update record - not implemented yet
+Update code for existing alias
+`hermes update --alias <alias>`
+or
+`hermes update -a <alias>`
 
-Get OTP - partially implemented
+Get OTP by alias
 `hermes get --alias <alias>`
 or
 `hermes get -a <alias>`
@@ -97,9 +94,8 @@ or
 <!-- ROADMAP -->
 ## Roadmap
 
-- [ ] Add Update fn
-- [ ] Fix Get fn
 - [ ] Validate input from user
+- [ ] Add unit tests
 - [ ] Add Changelog
 - [ ] Encrypt code in the file
 - [ ] Refactor code using best Rust practices

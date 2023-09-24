@@ -2,19 +2,8 @@ use clap::{Parser, Subcommand};
 use std::time::{SystemTime, UNIX_EPOCH};
 use totp_lite::{totp_custom, Sha512, DEFAULT_STEP};
 use std::fs::{File, OpenOptions};
-//use std::io::Write;
 use std::path::Path;
 use std::io::{self, BufRead, Write};
-
-/*
-MFA state: 
-- no encryption for codes
-- save them in file similar to /etc/passwd
-
-Usage: 
-cargo run -- add -c secret -a alias
-cargo run -- add --code secret --alias alias
-*/
 
 const FILE_CODEX: &str = "codex";
 
@@ -71,7 +60,7 @@ fn add(code: &Option<String>, alias: &Option<String>) {
     // create a storage file if it does not exist
     let data = format!("{}:{}\n", x, y);
     
-    if file_exists() == true {
+    if file_exists() {
         // check if alias already exists and return error message
         if alias_exists(&x) == true {
             println!("Alias already exists, please select another one");
@@ -96,11 +85,10 @@ fn add(code: &Option<String>, alias: &Option<String>) {
 fn update_code(code: &Option<String>, alias: &Option<String>) {
     remove(&alias);
     add(&code, &alias);
-    println!("{code:?}{alias:?}");
 }
 
 fn remove(alias: &Option<String>) {
-    if file_exists() == true {
+    if file_exists() {
         // read codes file and search for alias
         let mut data = "".to_owned();
         if let Ok(lines) = read_lines(FILE_CODEX) {
