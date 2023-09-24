@@ -16,7 +16,7 @@ cargo run -- add -c secret -a alias
 cargo run -- add --code secret --alias alias
 */
 
-const FILE_CODES: &str = "codes";
+const FILE_CODEX: &str = "codex";
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)] // Read from Cargo.toml
@@ -91,7 +91,7 @@ fn add(code: &Option<String>, alias: &Option<String>) {
         }
         let mut data_file = OpenOptions::new()
             .append(true)
-            .open(FILE_CODES)
+            .open(FILE_CODEX)
             .expect("cannot open file");
         data_file
             .write(data.as_bytes())
@@ -135,7 +135,7 @@ fn get(alias: &Option<String>) {
         println!("codes file does not exist");
     } else {    
         // read codes file and search for alias
-        if let Ok(lines) = read_lines("codes") {
+        if let Ok(lines) = read_lines(FILE_CODEX) {
             for line in lines {
                 if let Ok(l) = line {
                     let x: Vec<_> = l.split(":").collect();
@@ -149,12 +149,12 @@ fn get(alias: &Option<String>) {
 }
 
 fn file_exists() -> bool {
-    Path::new(FILE_CODES).exists()
+    Path::new(FILE_CODEX).exists()
 }
 
 fn alias_exists(alias: &str) -> bool {
     // read codes file and search for alias
-    if let Ok(lines) = read_lines(FILE_CODES) {
+    if let Ok(lines) = read_lines(FILE_CODEX) {
         for line in lines {
             if let Ok(l) = line {
                 let x: Vec<_> = l.split(":").collect();
@@ -168,7 +168,7 @@ fn alias_exists(alias: &str) -> bool {
 }
 
 fn write_to_file(data: &str) {
-    std::fs::write(FILE_CODES, data).expect("write failed");
+    std::fs::write(FILE_CODEX, data).expect("write failed");
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
