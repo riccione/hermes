@@ -60,21 +60,9 @@ fn main() {
     match &args.command {
         Commands::Add { code, alias } => add(code, alias),
         Commands::Remove { alias } => remove(alias),
-        Commands::Update { code, alias } => update(code, alias),
+        Commands::Update { code, alias } => update_code(code, alias),
         Commands::Get { alias } => get(alias),
     };
-    /*
-    match x {
-        Some(x) => {
-            generate_otp(&x);
-            //println!("x is {x}");
-        }
-        None => {
-            println!("Nothing");
-        }
-    }
-    println!("{x:?}");
-    */
 }
 
 fn add(code: &Option<String>, alias: &Option<String>) {
@@ -103,10 +91,11 @@ fn add(code: &Option<String>, alias: &Option<String>) {
         Some(code) => { generate_otp(&code); },
         None => { println!("Nothing to code") }
     }
-    println!("{code:?}{alias:?}");
 }
 
-fn update(code: &Option<String>, alias: &Option<String>) {
+fn update_code(code: &Option<String>, alias: &Option<String>) {
+    remove(&alias);
+    add(&code, &alias);
     println!("{code:?}{alias:?}");
 }
 
@@ -114,7 +103,7 @@ fn remove(alias: &Option<String>) {
     if file_exists() == true {
         // read codes file and search for alias
         let mut data = "".to_owned();
-        if let Ok(lines) = read_lines("codes") {
+        if let Ok(lines) = read_lines(FILE_CODEX) {
             for line in lines {
                 if let Ok(l) = line {
                     let x: Vec<_> = l.split(":").collect();
@@ -126,13 +115,13 @@ fn remove(alias: &Option<String>) {
             write_to_file(&data);
         }
     } else {
-        println!("Codes file does not exist. First add a code.");
+        println!("Codex file does not exist. First add a code");
     }
 }
 
 fn get(alias: &Option<String>) {
     if file_exists() == false {
-        println!("codes file does not exist");
+        println!("codex file does not exist");
     } else {    
         // read codes file and search for alias
         if let Ok(lines) = read_lines(FILE_CODEX) {
