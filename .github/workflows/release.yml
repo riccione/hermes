@@ -1,0 +1,71 @@
+name: Release
+
+on: 
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build-release:
+    name: build-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - build: linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: hermes
+            asset_name: hermes_x86_64-unknown-linux-gnu
+            use-cross: false
+          - build: x86_64-pc-windows-gnu
+            os: windows-latest
+            target: x86_64-pc-windows-gnu
+            artifact_name: hermes.exe
+            asset_name: hermes_x86_64-pc-windows-gnu.exe
+            use-cross: false
+          - build: macos-x86_64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: hermes
+            asset_name: hermes_x86_64-apple-darwin
+            use-cross: false
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set the version
+      id: version
+      run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        target: ${{ matrix.target }}
+    
+    - name: Add mingw64 to path for x86_64-gnu
+      run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
+      if: matrix.os == 'windows-latest'
+      shell: bash
+
+    - name: Build
+      uses: actions-rs/cargo@v1
+      with:
+        use-cross: ${{ matrix.use-cross }}
+        command: build
+        args: --release --locked
+
+    - name: Strip binary
+      if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
+      run: strip target/release/hermes
+
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: target/release/${{ matrix.artifact_name }}
+        asset_name: ${{ asset_name }}
+        tag: ${{ github.ref }}
