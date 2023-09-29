@@ -47,16 +47,35 @@ fn main() {
     
     //let x, y =
     match &args.command {
-        Commands::Add { code, alias } => add(code, alias),
+        Commands::Add { code, alias } => {
+            if code.is_some() && alias.is_some() {
+                if validate(alias).is_ok() {
+                    add(code, alias);
+                }
+            } else {
+                println!("Please provide valid alias and code");
+                std::process::exit(1);
+            }
+        },
         Commands::Remove { alias } => remove(alias),
         Commands::Update { code, alias } => update_code(code, alias),
         Commands::Get { alias } => get(alias),
     };
 }
 
+fn validate(alias: &Option<String>) -> Result<(), ()> {
+    if alias.clone().unwrap().contains(":") {
+        println!("Don't use : in your alias");
+        Err(())
+    } else {
+        Ok(())
+    }
+}
+
 fn add(code: &Option<String>, alias: &Option<String>) {
     let x = alias.clone().unwrap();
     let y = code.clone().unwrap();
+
     // create a storage file if it does not exist
     let data = format!("{}:{}\n", x, y);
     
