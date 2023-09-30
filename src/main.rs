@@ -7,6 +7,13 @@ use std::io::{self, BufRead, Write};
 
 const FILE_CODEX: &str = "codex";
 
+#[derive(Debug)]
+pub enum HermesError {
+    NullArgs,
+}
+
+pub type HermesResult = Result<bool, HermesError>;
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)] // Read from Cargo.toml
 struct Args {
@@ -18,10 +25,10 @@ struct Args {
 enum Commands {
     /// Adds code to the hermes
     Add {
-        #[clap(short = 'c', long)]
-        code: Option<String>,
         #[clap(short = 'a', long)]
         alias: Option<String>,
+        #[clap(short = 'c', long)]
+        code: Option<String>,
     },
     /// Remove code from the hermes
     Remove {
@@ -30,10 +37,10 @@ enum Commands {
     },
     /// Update code by alias
     Update {
-        #[clap(short = 'c', long)]
-        code: Option<String>,
         #[clap(short = 'a', long)]
         alias: Option<String>,
+        #[clap(short = 'c', long)]
+        code: Option<String>,
     },
     /// Get code by alias
     Get {
@@ -45,34 +52,46 @@ enum Commands {
 fn main() {
     let args = Args::parse();
     
-    //let x, y =
     match &args.command {
-        Commands::Add { code, alias } => {
+        Commands::Add { alias, code } => {
             if code.is_some() && alias.is_some() {
-                if validate(alias).is_ok() {
-                    add(code, alias);
+                if !alias.as_ref().unwrap().contains(":") || 
+                    !code.as_ref().unwrap().contains(":") {
+                    add(&alias, code);
+                } else {
+                    println!("Don't use : in alias or code'");
+                    std::process::exit(1);
                 }
             } else {
                 println!("Please provide valid alias and code");
                 std::process::exit(1);
             }
         },
-        Commands::Remove { alias } => remove(alias),
-        Commands::Update { code, alias } => update_code(code, alias),
-        Commands::Get { alias } => get(alias),
+        Commands::Remove { alias } => {
+            if alias.is_some() {
+                remove(&alias.as_ref().unwrap().as_str());
+            } else {
+                println!("Error: no arguments for remove command");
+                std::process::exit(1);
+            }
+        },
+        Commands::Update { code, alias } => {
+            if alias.is_some() && code.is_some() {
+                update_code(code, alias);
+            }
+        },
+        Commands::Get { alias } => {
+            if alias.is_some() {
+                get(&alias.as_ref().unwrap().as_str())
+            } else {
+                println!("Error: no arguments for get command");
+                std::process::exit(1);
+            }
+        }
     };
 }
 
-fn validate(alias: &Option<String>) -> Result<(), ()> {
-    if alias.clone().unwrap().contains(":") {
-        println!("Don't use : in your alias");
-        Err(())
-    } else {
-        Ok(())
-    }
-}
-
-fn add(code: &Option<String>, alias: &Option<String>) {
+fn add(alias: &Option<String>, code: &Option<String>) {
     let x = alias.clone().unwrap();
     let y = code.clone().unwrap();
 
@@ -102,11 +121,11 @@ fn add(code: &Option<String>, alias: &Option<String>) {
 }
 
 fn update_code(code: &Option<String>, alias: &Option<String>) {
-    remove(&alias);
+    remove(&alias.as_ref().unwrap().as_str());
     add(&code, &alias);
 }
 
-fn remove(alias: &Option<String>) {
+fn remove(alias: &str) {
     if file_exists() {
         // read codes file and search for alias
         let mut data = "".to_owned();
@@ -114,7 +133,7 @@ fn remove(alias: &Option<String>) {
             for line in lines {
                 if let Ok(l) = line {
                     let x: Vec<_> = l.split(":").collect();
-                    if x[0] != alias.clone().unwrap() {
+                    if x[0] != alias {
                         data = data + &l + "\n";
                     }
                 }
@@ -126,7 +145,7 @@ fn remove(alias: &Option<String>) {
     }
 }
 
-fn get(alias: &Option<String>) {
+fn get(alias: &str) {
     if file_exists() == false {
         println!("codex file does not exist");
     } else {    
@@ -135,7 +154,7 @@ fn get(alias: &Option<String>) {
             for line in lines {
                 if let Ok(l) = line {
                     let x: Vec<_> = l.split(":").collect();
-                    if x[0] == alias.clone().unwrap() {
+                    if x[0] == alias {
                         generate_otp(x[1]);
                     }
                 }
