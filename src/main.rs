@@ -57,7 +57,8 @@ fn main() {
             if code.is_some() && alias.is_some() {
                 if !alias.as_ref().unwrap().contains(":") || 
                     !code.as_ref().unwrap().contains(":") {
-                    add(&alias, code);
+                    add(alias.as_ref().unwrap().as_str(), 
+                        code.as_ref().unwrap().as_str());
                 } else {
                     println!("Don't use : in alias or code'");
                     std::process::exit(1);
@@ -69,20 +70,21 @@ fn main() {
         },
         Commands::Remove { alias } => {
             if alias.is_some() {
-                remove(&alias.as_ref().unwrap().as_str());
+                remove(alias.as_ref().unwrap().as_str());
             } else {
                 println!("Error: no arguments for remove command");
                 std::process::exit(1);
             }
         },
-        Commands::Update { code, alias } => {
+        Commands::Update { alias, code } => {
             if alias.is_some() && code.is_some() {
-                update_code(code, alias);
+                update_code(alias.as_ref().unwrap().as_str(), 
+                    code.as_ref().unwrap().as_str());
             }
         },
         Commands::Get { alias } => {
             if alias.is_some() {
-                get(&alias.as_ref().unwrap().as_str())
+                get(alias.as_ref().unwrap().as_str())
             } else {
                 println!("Error: no arguments for get command");
                 std::process::exit(1);
@@ -91,16 +93,13 @@ fn main() {
     };
 }
 
-fn add(alias: &Option<String>, code: &Option<String>) {
-    let x = alias.clone().unwrap();
-    let y = code.clone().unwrap();
-
+fn add(alias: &str, code: &str) {
     // create a storage file if it does not exist
-    let data = format!("{}:{}\n", x, y);
+    let data = format!("{}:{}\n", alias, code);
     
     if file_exists() {
         // check if alias already exists and return error message
-        if alias_exists(&x) == true {
+        if alias_exists(&alias) == true {
             println!("Alias already exists, please select another one");
             std::process::exit(1);
         }
@@ -114,15 +113,12 @@ fn add(alias: &Option<String>, code: &Option<String>) {
     } else {
         write_to_file(&data);
     }
-    match code {
-        Some(code) => { generate_otp(&code); },
-        None => { println!("Nothing to code") }
-    }
+    generate_otp(&code); 
 }
 
-fn update_code(code: &Option<String>, alias: &Option<String>) {
-    remove(&alias.as_ref().unwrap().as_str());
-    add(&code, &alias);
+fn update_code(alias: &str, code: &str) {
+    remove(&alias);
+    add(&alias, &code);
 }
 
 fn remove(alias: &str) {
