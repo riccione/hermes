@@ -47,6 +47,8 @@ enum Commands {
         #[clap(short = 'a', long)]
         alias: Option<String>,
     },
+    /// Get codes for all records
+    Ls {},
 }
 
 fn main() {
@@ -89,6 +91,9 @@ fn main() {
                 println!("Error: no arguments for get command");
                 std::process::exit(1);
             }
+        },
+        Commands::Ls {} => {
+            ls();
         }
     };
 }
@@ -113,7 +118,8 @@ fn add(alias: &str, code: &str) {
     } else {
         write_to_file(&data);
     }
-    generate_otp(&code); 
+    let otp = generate_otp(code);
+    println!("{otp}");
 }
 
 fn update_code(alias: &str, code: &str) {
@@ -151,11 +157,32 @@ fn get(alias: &str) {
                 if let Ok(l) = line {
                     let x: Vec<_> = l.split(":").collect();
                     if x[0] == alias {
-                        generate_otp(x[1]);
+                        let otp = generate_otp(x[1]);
+                        println!("{otp}");
                     }
                 }
             }
         }
+    }
+}
+
+fn ls() {
+    // read file
+    if file_exists() {
+        if let Ok(lines) = read_lines(FILE_CODEX) {
+            println!("Alias\tOTP");
+            for line in lines {
+                if let Ok(l) = line {
+                    let x: Vec<_> = l.split(":").collect();
+                    let alias = x[0];
+                    let otp = generate_otp(x[1]);
+                    println!("{alias}\t{otp}");
+                }
+            }
+        }
+    } else {
+        println!("codex file does not exist");
+        std::process::exit(1);
     }
 }
 
@@ -188,10 +215,9 @@ where P: AsRef<Path>, {
     Ok(io::BufReader::new(file).lines())
 }
 
-fn generate_otp(x: &str) {
+fn generate_otp(x: &str) -> String {
     let password = x.as_bytes();
     let seconds: u64 = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
-    let result: String = totp_custom::<Sha512>(DEFAULT_STEP, 6, password, seconds);
-    println!("{}", result);
+    totp_custom::<Sha512>(DEFAULT_STEP, 6, password, seconds)
 }
