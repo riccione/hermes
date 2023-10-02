@@ -4,6 +4,7 @@ use totp_lite::{totp_custom, Sha512, DEFAULT_STEP};
 use std::fs::{File, OpenOptions};
 use std::path::Path;
 use std::io::{self, BufRead, Write};
+use magic_crypt::{new_magic_crypt, MagicCryptTrait};
 
 const FILE_CODEX: &str = "codex";
 
@@ -29,6 +30,8 @@ enum Commands {
         alias: Option<String>,
         #[clap(short = 'c', long)]
         code: Option<String>,
+        #[clap(short = 'p', long)]
+        password: Option<String>,
     },
     /// Remove code from the hermes
     Remove {
@@ -41,26 +44,36 @@ enum Commands {
         alias: Option<String>,
         #[clap(short = 'c', long)]
         code: Option<String>,
+        #[clap(short = 'p', long)]
+        password: Option<String>,
     },
     /// Get code by alias
     Get {
         #[clap(short = 'a', long)]
         alias: Option<String>,
+        #[clap(short = 'p', long)]
+        password: Option<String>,
     },
     /// Get codes for all records
-    Ls {},
+    Ls {
+        #[clap(short = 'p', long)]
+        password: Option<String>,
+    },
 }
 
 fn main() {
     let args = Args::parse();
-    
+
     match &args.command {
-        Commands::Add { alias, code } => {
+        Commands::Add { alias, code, password } => {
             if code.is_some() && alias.is_some() {
                 if !alias.as_ref().unwrap().contains(":") || 
                     !code.as_ref().unwrap().contains(":") {
+                    let encrypted = crypt(true, 
+                        code.as_ref().unwrap(), 
+                        password);
                     add(alias.as_ref().unwrap().as_str(), 
-                        code.as_ref().unwrap().as_str());
+                        encrypted.as_str());
                 } else {
                     println!("Don't use : in alias or code'");
                     std::process::exit(1);
@@ -78,22 +91,26 @@ fn main() {
                 std::process::exit(1);
             }
         },
-        Commands::Update { alias, code } => {
+        Commands::Update { alias, code, password } => {
             if alias.is_some() && code.is_some() {
+                let encrypted = crypt(true, 
+                    code.as_ref().unwrap(), 
+                    password);
                 update_code(alias.as_ref().unwrap().as_str(), 
-                    code.as_ref().unwrap().as_str());
+                    encrypted.as_str());
             }
         },
-        Commands::Get { alias } => {
+        Commands::Get { alias, password } => {
             if alias.is_some() {
-                get(alias.as_ref().unwrap().as_str())
+                get(alias.as_ref().unwrap().as_str(),
+                    password);
             } else {
                 println!("Error: no arguments for get command");
                 std::process::exit(1);
             }
         },
-        Commands::Ls {} => {
-            ls();
+        Commands::Ls { password } => {
+            ls(password);
         }
     };
 }
@@ -147,7 +164,7 @@ fn remove(alias: &str) {
     }
 }
 
-fn get(alias: &str) {
+fn get(alias: &str, password: &Option<String>) {
     if file_exists() == false {
         println!("codex file does not exist");
     } else {    
@@ -157,7 +174,9 @@ fn get(alias: &str) {
                 if let Ok(l) = line {
                     let x: Vec<_> = l.split(":").collect();
                     if x[0] == alias {
-                        let otp = generate_otp(x[1]);
+                        let decrypted = crypt(false,
+                            &x[1].to_string(), password);
+                        let otp = generate_otp(decrypted.as_str());
                         println!("{otp}");
                     }
                 }
@@ -166,7 +185,7 @@ fn get(alias: &str) {
     }
 }
 
-fn ls() {
+fn ls(password: &Option<String>) {
     // read file
     if file_exists() {
         if let Ok(lines) = read_lines(FILE_CODEX) {
@@ -175,7 +194,9 @@ fn ls() {
                 if let Ok(l) = line {
                     let x: Vec<_> = l.split(":").collect();
                     let alias = x[0];
-                    let otp = generate_otp(x[1]);
+                    let decrypted = crypt(false,
+                        &x[1].to_string(), password);
+                    let otp = generate_otp(decrypted.as_str());
                     println!("{alias}\t{otp}");
                 }
             }
@@ -220,4 +241,24 @@ fn generate_otp(x: &str) -> String {
     let seconds: u64 = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
     totp_custom::<Sha512>(DEFAULT_STEP, 6, password, seconds)
+}
+
+/*
+ * encrypt fn uses magic_crypt crate 
+ */
+fn crypt(encrypt: bool, code: &String, password: &Option<String>) -> String {
+    if password.is_none() {
+        return code.to_string();
+    }
+    let password = password.clone().unwrap();
+    let mcrypt = new_magic_crypt!(password, 256);
+    if encrypt {
+        mcrypt.encrypt_str_to_base64(code)
+    } else {
+        let decrypted = match mcrypt.decrypt_base64_to_string(code) {
+            Ok(decrypted) => decrypted,
+            Err(_) => "".to_string(),
+        };
+        decrypted
+    }
 }
