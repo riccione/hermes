@@ -175,7 +175,7 @@ fn remove(alias: &str) {
     }
 }
 
-fn get(alias: &str, password: &bool) {
+fn _get(alias: &str, password: &bool) {
     if file_exists() == false {
         println!("codex file does not exist");
     } else {    
@@ -205,39 +205,22 @@ fn get(alias: &str, password: &bool) {
     }
 }
 
-fn _ls(password: &bool) {
-    // read file
-    if file_exists() {
-        let pass = if *password {
-            input_password()
-        } else {
-            "".to_string()
-        };
-        if let Ok(lines) = read_lines(FILE_CODEX) {
-            println!("Alias\tOTP");
-            for line in lines {
-                if let Ok(l) = line {
-                    let x: Vec<_> = l.split(":").collect();
-                    let alias = x[0];
-                    let code = if *password {
-                        crypt(false,
-                            &x[1].to_string(), 
-                            &pass)
-                    } else {
-                        x[1].to_string()
-                    };
-                    let otp = if code.to_string() == TALARIA {
-                        "error: cannot decrypt".to_string()
-                    } else {
-                        generate_otp(code.as_str())
-                    };                 
-                    println!("{alias}\t{otp}");
-                }
-            }
+fn get(alias: &str, is_encrypted: &bool) {
+    let lines = read_file_to_vec();
+    for l in lines {
+        let x: Vec<&str> = l.split(DELIMETER).collect();
+        // alias exists in the vector
+        if x[0] == alias {
+            let code = if *is_encrypted {
+                crypt(false,
+                    &x[1].to_string(), 
+                    &input_password())
+            } else {
+                x[1].to_string()
+            };
+        let otp = generate_otp(code.as_str());
+        println!("{otp}");
         }
-    } else {
-        println!("codex file does not exist");
-        std::process::exit(1);
     }
 }
 
@@ -259,11 +242,7 @@ fn ls(is_encrypted: &bool) {
         } else {
             x[1].to_string()
         };
-        let otp = if code.to_string() == TALARIA {
-            "Error: cannot decrypt".to_string()
-        } else {
-            generate_otp(code.as_str())
-        };
+        let otp = generate_otp(code.as_str());
         println!("{alias}\t{otp}");
     }
 }
@@ -312,6 +291,10 @@ where P: AsRef<Path>, {
 }
 
 fn generate_otp(x: &str) -> String {
+    // handles case where password cannot decrypt the code
+    if x == TALARIA {
+        return "Error: cannot decrypt".to_string()
+    }
     let password = x.as_bytes();
     let seconds: u64 = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
