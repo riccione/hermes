@@ -3,10 +3,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use totp_lite::{totp_custom, Sha512, DEFAULT_STEP};
 use std::fs::{File, OpenOptions};
 use std::path::Path;
-use std::io::{self, BufRead, Write};
+use std::io::{self, BufRead, BufReader, Write};
 use magic_crypt::{new_magic_crypt, MagicCryptTrait};
 
 const FILE_CODEX: &str = "codex";
+// Odyssea V 45
+const TALARIA: &str = "immortales, aureos";
+const DELIMETER: &str = ":";
 
 #[derive(Debug)]
 pub enum HermesError {
@@ -31,7 +34,7 @@ enum Commands {
         #[clap(short = 'c', long)]
         code: Option<String>,
         #[clap(short = 'p', long)]
-        password: Option<String>,
+        password: bool,
     },
     /// Remove code from the hermes
     Remove {
@@ -45,19 +48,19 @@ enum Commands {
         #[clap(short = 'c', long)]
         code: Option<String>,
         #[clap(short = 'p', long)]
-        password: Option<String>,
+        password: bool,
     },
     /// Get code by alias
     Get {
         #[clap(short = 'a', long)]
         alias: Option<String>,
         #[clap(short = 'p', long)]
-        password: Option<String>,
+        password: bool,
     },
     /// Get codes for all records
     Ls {
         #[clap(short = 'p', long)]
-        password: Option<String>,
+        password: bool,
     },
 }
 
@@ -69,11 +72,15 @@ fn main() {
             if code.is_some() && alias.is_some() {
                 if !alias.as_ref().unwrap().contains(":") || 
                     !code.as_ref().unwrap().contains(":") {
-                    let encrypted = crypt(true, 
-                        code.as_ref().unwrap(), 
-                        password);
+                    let pass = if *password { 
+                        crypt(true, 
+                            code.as_ref().unwrap(), 
+                            &input_password())
+                    } else {
+                        code.as_ref().unwrap().to_string()
+                    };
                     add(alias.as_ref().unwrap().as_str(), 
-                        encrypted.as_str());
+                        pass.as_str());
                 } else {
                     println!("Don't use : in alias or code'");
                     std::process::exit(1);
@@ -93,11 +100,15 @@ fn main() {
         },
         Commands::Update { alias, code, password } => {
             if alias.is_some() && code.is_some() {
-                let encrypted = crypt(true, 
-                    code.as_ref().unwrap(), 
-                    password);
+                let pass = if *password {
+                    crypt(true, 
+                        code.as_ref().unwrap(), 
+                        &input_password())
+                } else {
+                    code.as_ref().unwrap().to_string()
+                };
                 update_code(alias.as_ref().unwrap().as_str(), 
-                    encrypted.as_str());
+                    pass.as_str());
             }
         },
         Commands::Get { alias, password } => {
@@ -164,7 +175,7 @@ fn remove(alias: &str) {
     }
 }
 
-fn get(alias: &str, password: &Option<String>) {
+fn get(alias: &str, password: &bool) {
     if file_exists() == false {
         println!("codex file does not exist");
     } else {    
@@ -174,9 +185,18 @@ fn get(alias: &str, password: &Option<String>) {
                 if let Ok(l) = line {
                     let x: Vec<_> = l.split(":").collect();
                     if x[0] == alias {
-                        let decrypted = crypt(false,
-                            &x[1].to_string(), password);
-                        let otp = generate_otp(decrypted.as_str());
+                        let code = if *password {
+                            crypt(false,
+                                &x[1].to_string(), 
+                                &input_password())
+                        } else {
+                            x[1].to_string()
+                        };
+                        let otp  = if code.to_string() == TALARIA {
+                            "error: cannot decrypt".to_string()
+                        } else {
+                            generate_otp(code.as_str())
+                        };
                         println!("{otp}");
                     }
                 }
@@ -185,24 +205,79 @@ fn get(alias: &str, password: &Option<String>) {
     }
 }
 
-fn ls(password: &Option<String>) {
+fn _ls(password: &bool) {
     // read file
     if file_exists() {
+        let pass = if *password {
+            input_password()
+        } else {
+            "".to_string()
+        };
         if let Ok(lines) = read_lines(FILE_CODEX) {
             println!("Alias\tOTP");
             for line in lines {
                 if let Ok(l) = line {
                     let x: Vec<_> = l.split(":").collect();
                     let alias = x[0];
-                    let decrypted = crypt(false,
-                        &x[1].to_string(), password);
-                    let otp = generate_otp(decrypted.as_str());
+                    let code = if *password {
+                        crypt(false,
+                            &x[1].to_string(), 
+                            &pass)
+                    } else {
+                        x[1].to_string()
+                    };
+                    let otp = if code.to_string() == TALARIA {
+                        "error: cannot decrypt".to_string()
+                    } else {
+                        generate_otp(code.as_str())
+                    };                 
                     println!("{alias}\t{otp}");
                 }
             }
         }
     } else {
         println!("codex file does not exist");
+        std::process::exit(1);
+    }
+}
+
+fn ls(is_encrypted: &bool) {
+    let pass = if *is_encrypted {
+        input_password()
+    } else {
+        "".to_string()
+    };
+    let lines = read_file_to_vec();
+    println!("Alias\tOTP");
+    for l in lines {
+        let x: Vec<&str> = l.split(DELIMETER).collect();
+        let alias = x[0];
+        let code = if *is_encrypted {
+            crypt(false,
+                &x[1].to_string(),
+                &pass)
+        } else {
+            x[1].to_string()
+        };
+        let otp = if code.to_string() == TALARIA {
+            "Error: cannot decrypt".to_string()
+        } else {
+            generate_otp(code.as_str())
+        };
+        println!("{alias}\t{otp}");
+    }
+}
+
+fn read_file_to_vec() -> Vec<String> {
+    if file_exists() {
+        let file = File::open(FILE_CODEX)
+            .expect("There is no codex file");
+        let file = BufReader::new(file);
+        file.lines()
+            .map(|x| x.expect("Could not parse line"))
+            .collect()
+    } else {
+        println!("{FILE_CODEX} file does not exist");
         std::process::exit(1);
     }
 }
@@ -243,21 +318,24 @@ fn generate_otp(x: &str) -> String {
     totp_custom::<Sha512>(DEFAULT_STEP, 6, password, seconds)
 }
 
+fn input_password() -> String {
+    let mut input = String::new();
+    let stdin = io::stdin();
+    stdin.read_line(&mut input).expect("Could not read password");
+    input
+}
+
 /*
- * encrypt fn uses magic_crypt crate 
+ * encrypt/decrypt fn uses magic_crypt crate 
  */
-fn crypt(encrypt: bool, code: &String, password: &Option<String>) -> String {
-    if password.is_none() {
-        return code.to_string();
-    }
-    let password = password.clone().unwrap();
-    let mcrypt = new_magic_crypt!(password, 256);
+fn crypt(encrypt: bool, code: &String, password: &str) -> String {
+    let mcrypt = new_magic_crypt!(password.trim(), 256);
     if encrypt {
         mcrypt.encrypt_str_to_base64(code)
     } else {
         let decrypted = match mcrypt.decrypt_base64_to_string(code) {
             Ok(decrypted) => decrypted,
-            Err(_) => "".to_string(),
+            Err(_) => TALARIA.to_string(),
         };
         decrypted
     }
