@@ -156,53 +156,15 @@ fn update_code(alias: &str, code: &str) {
 }
 
 fn remove(alias: &str) {
-    if file_exists() {
-        // read codes file and search for alias
-        let mut data = "".to_owned();
-        if let Ok(lines) = read_lines(FILE_CODEX) {
-            for line in lines {
-                if let Ok(l) = line {
-                    let x: Vec<_> = l.split(":").collect();
-                    if x[0] != alias {
-                        data = data + &l + "\n";
-                    }
-                }
-            }
-            write_to_file(&data);
-        }
-    } else {
-        println!("Codex file does not exist. First add a code");
-    }
-}
-
-fn _get(alias: &str, password: &bool) {
-    if file_exists() == false {
-        println!("codex file does not exist");
-    } else {    
-        // read codes file and search for alias
-        if let Ok(lines) = read_lines(FILE_CODEX) {
-            for line in lines {
-                if let Ok(l) = line {
-                    let x: Vec<_> = l.split(":").collect();
-                    if x[0] == alias {
-                        let code = if *password {
-                            crypt(false,
-                                &x[1].to_string(), 
-                                &input_password())
-                        } else {
-                            x[1].to_string()
-                        };
-                        let otp  = if code.to_string() == TALARIA {
-                            "error: cannot decrypt".to_string()
-                        } else {
-                            generate_otp(code.as_str())
-                        };
-                        println!("{otp}");
-                    }
-                }
-            }
+    let lines = read_file_to_vec();
+    let mut data = "".to_owned();
+    for l in lines {
+        let x: Vec<&str> = l.split(DELIMETER).collect();
+        if x[0] != alias {
+            data = data + &l + "\n";
         }
     }
+    write_to_file(&data);
 }
 
 fn get(alias: &str, is_encrypted: &bool) {
