@@ -256,6 +256,7 @@ name = "hermes"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "koibumi-base32",
  "magic-crypt",
  "totp-lite",
 ]
@@ -268,6 +269,21 @@ checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
 dependencies = [
  "digest 0.10.7",
 ]
+
+[[package]]
+name = "koibumi-base32"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24d138d86042bc525f86860655d92c2e3acc285d1aca883c05856753c5102bbb"
+dependencies = [
+ "lazy_static",
+]
+
+[[package]]
+name = "lazy_static"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"

@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::time::{SystemTime, UNIX_EPOCH};
-use totp_lite::{totp_custom, Sha512, DEFAULT_STEP};
+use totp_lite::{totp_custom, Sha1, DEFAULT_STEP};
+use koibumi_base32 as base32;
 use std::fs::{File, OpenOptions};
 use std::path::Path;
 use std::io::{self, BufRead, BufReader, Write};
@@ -257,10 +258,17 @@ fn generate_otp(x: &str) -> String {
     if x == TALARIA {
         return "Error: cannot decrypt".to_string()
     }
-    let password = x.as_bytes();
+
+    //let password: &[u8] = b"HQQT37PJ3FZ5AFN4K555PDCF3X3KGVE5";//y.as_bytes();
+    let password = &base32::decode(x.to_string().trim().to_lowercase())
+        .expect("Error: Invalid base32 character");
     let seconds: u64 = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
-    totp_custom::<Sha512>(DEFAULT_STEP, 6, password, seconds)
+    totp_custom::<Sha1>(
+        DEFAULT_STEP, 
+        6, 
+        password, 
+        seconds,)
 }
 
 fn input_password() -> String {
@@ -276,8 +284,10 @@ fn input_password() -> String {
 fn crypt(encrypt: bool, code: &String, password: &str) -> String {
     let mcrypt = new_magic_crypt!(password.trim(), 256);
     if encrypt {
-        mcrypt.encrypt_str_to_base64(code)
+            mcrypt
+            .encrypt_str_to_base64(code)
     } else {
+        //let base64 = base32::decode(code.as_bytes());
         let decrypted = match mcrypt.decrypt_base64_to_string(code) {
             Ok(decrypted) => decrypted,
             Err(_) => TALARIA.to_string(),
