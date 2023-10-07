@@ -252,7 +252,6 @@ fn generate_otp(x: &str) -> String {
         return "Error: cannot decrypt".to_string()
     }
 
-    //let password: &[u8] = b"HQQT37PJ3FZ5AFN4K555PDCF3X3KGVE5";//y.as_bytes();
     let password = &base32::decode(x.to_string().trim().to_lowercase())
         .expect("Error: Invalid base32 character");
     let seconds: u64 = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();

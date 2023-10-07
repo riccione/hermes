@@ -42,6 +42,10 @@
 ## About The Project
 
 Simple cli OTP app written in Rust. Mainly for self education and self use.
+It uses several crates:
+- magic crypt
+- koibumi-base32
+- totp-lite
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -85,19 +89,20 @@ or
 `hermes update -a <alias>`
 
 Get OTP by alias
-`hermes get --alias <alias>`
+`hermes ls --alias <alias>`
 or
-`hermes get -a <alias>`
+`hermes ls -a <alias>`
+
+Get all OTP codes
+`hermes ls`
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- ROADMAP -->
 ## Roadmap
 
-- [ ] Validate input from user
 - [ ] Add unit tests
 - [ ] Add Changelog
-- [ ] Encrypt code in the file
 - [ ] Refactor code using best Rust practices
 - [ ] Maybe add GUI
 
