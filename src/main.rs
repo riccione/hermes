@@ -1,8 +1,7 @@
 use clap::{Parser, Subcommand};
-
 use std::time::{SystemTime, UNIX_EPOCH};
 use totp_lite::{totp_custom, Sha1, DEFAULT_STEP};
-use koibumi_base32 as base32;
+use data_encoding::BASE32;
 use std::fs::{File, OpenOptions};
 use std::path::Path;
 use std::io::{self, BufRead, BufReader, Write};
@@ -12,13 +11,6 @@ const FILE_CODEX: &str = "codex";
 // Odyssea V 45
 const TALARIA: &str = "immortales, aureos";
 const DELIMETER: &str = ":";
-
-#[derive(Debug)]
-pub enum HermesError {
-    NullArgs,
-}
-
-pub type HermesResult = Result<bool, HermesError>;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)] // Read from Cargo.toml
@@ -252,15 +244,19 @@ fn generate_otp(x: &str) -> String {
         return "Error: cannot decrypt".to_string()
     }
 
-    let password = &base32::decode(x.to_string().trim().to_lowercase())
-        .expect("Error: Invalid base32 character");
-    let seconds: u64 = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    match BASE32.decode(x.as_bytes()) {
+        Ok(x) => {
 
-    totp_custom::<Sha1>(
-        DEFAULT_STEP, 
-        6, 
-        password, 
-        seconds,)
+        let seconds: u64 = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
+        totp_custom::<Sha1>(
+            DEFAULT_STEP, 
+            6, 
+            &x, 
+            seconds,)
+        },
+        Err(e) => format!("Error: {e:?}"),
+    }
 }
 
 fn input_password() -> String {
