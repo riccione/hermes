@@ -112,7 +112,13 @@ fn main() {
 
 fn add(alias: &str, code: &str, is_encrypted: &u8) {
     // create a storage file if it does not exist
-    let data = format!("{}:{}:{}\n", alias, code, is_encrypted);
+    // sha for the future use
+    let sha = "sha1";
+    let data = format!("{}:{}:{}:{}\n", 
+        alias,
+        code,
+        is_encrypted,
+        sha);
     
     if file_exists() {
         // check if alias already exists and return error message
