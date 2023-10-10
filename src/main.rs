@@ -27,8 +27,8 @@ enum Commands {
         alias: Option<String>,
         #[clap(short = 'c', long)]
         code: Option<String>,
-        #[clap(short = 'p', long)]
-        password: bool,
+        #[clap(short = 'u', long)]
+        unencrypt: bool,
     },
     /// Remove code from the hermes
     Remove {
@@ -41,15 +41,15 @@ enum Commands {
         alias: Option<String>,
         #[clap(short = 'c', long)]
         code: Option<String>,
-        #[clap(short = 'p', long)]
-        password: bool,
+        #[clap(short = 'u', long)]
+        unencrypt: bool,
     },
     /// Get codes for all/alias records
     Ls {
         #[clap(short = 'a', long)]
         alias: Option<String>,
-        #[clap(short = 'p', long)]
-        password: bool,
+        #[clap(short = 'u', long)]
+        unencrypt: bool,
     },
 }
 
@@ -57,21 +57,13 @@ fn main() {
     let args = Args::parse();
 
     match &args.command {
-        Commands::Add { alias, code, password } => {
+        Commands::Add { alias, code, unencrypt } => {
             if code.is_some() && alias.is_some() {
                 if !alias.as_ref().unwrap().contains(":") || 
                     !code.as_ref().unwrap().contains(":") {
-                    let pass = if *password { 
-                        crypt(true, 
-                            code.as_ref().unwrap(), 
-                            &input_password())
-                    } else {
-                        code.as_ref().unwrap().to_string()
-                    };
-                    let is_encrypted = *password as u8;
                     add(alias.as_ref().unwrap().as_str(), 
-                        pass.as_str(),
-                        &is_encrypted);
+                        code.as_ref().unwrap().as_str(),
+                        &unencrypt);
                 } else {
                     println!("Don't use : in alias or code'");
                     std::process::exit(1);
@@ -89,35 +81,45 @@ fn main() {
                 std::process::exit(1);
             }
         },
-        Commands::Update { alias, code, password } => {
+        Commands::Update { alias, code, unencrypt } => {
             if alias.is_some() && code.is_some() {
-                let pass = if *password {
-                    crypt(true, 
-                        code.as_ref().unwrap(), 
-                        &input_password())
-                } else {
-                    code.as_ref().unwrap().to_string()
-                };
-                let is_encrypted = *password as u8;
                 update_code(alias.as_ref().unwrap().as_str(), 
-                    pass.as_str(),
-                    &is_encrypted);
+                    code.as_ref().unwrap().as_str(),
+                    &unencrypt);
             }
         },
-        Commands::Ls { alias, password } => {
-            ls(alias, password);
+        Commands::Ls { alias, unencrypt } => {
+            ls(alias, unencrypt);
         }
     };
 }
 
-fn add(alias: &str, code: &str, is_encrypted: &u8) {
+fn add(alias: &str, code: &str, unencrypt: &bool) {
     // create a storage file if it does not exist
+    let code_encrypted = if *unencrypt { 
+        code.to_string()
+    } else {
+        crypt(true, 
+            &code.to_string(), 
+            &input_password())
+    };
+    let is_unencrypted = *unencrypt as u8;
+    
+    // validate code
+    match BASE32.decode(code.as_bytes()) {
+        Ok(_) => (),
+        Err(e) => {
+            println!("Error: {e}");
+            std::process::exit(1);
+        }
+    }
+    
     // sha for the future use
     let sha = "sha1";
     let data = format!("{}:{}:{}:{}\n", 
         alias,
-        code,
-        is_encrypted,
+        code_encrypted,
+        is_unencrypted,
         sha);
     
     if file_exists() {
@@ -140,9 +142,9 @@ fn add(alias: &str, code: &str, is_encrypted: &u8) {
     println!("{otp}");
 }
 
-fn update_code(alias: &str, code: &str, is_encrypted: &u8) {
+fn update_code(alias: &str, code: &str, unenc: &bool) {
     remove(&alias);
-    add(&alias, &code, &is_encrypted);
+    add(&alias, &code, &unenc);
 }
 
 fn remove(alias: &str) {
@@ -157,15 +159,15 @@ fn remove(alias: &str) {
     write_to_file(&data);
 }
 
-fn get(is_password: &bool, is_encrypted: &str, pass: &String, x: &str) -> String {
-    let code = if *is_password && is_encrypted == "1" {
+fn get(unenc: &bool, unencrypt_curr: &str, pass: &String, x: &str) -> String {
+    let code = if unencrypt_curr == "0" {
         crypt(false,
             &x.to_string(),
             &pass)
     } else {
         x.to_string()
     };
-    let otp = if !*is_password && is_encrypted == "1" {
+    let otp = if *unenc && unencrypt_curr == "0" {
         "Cannot decrypt - provide a password".to_string()
     } else {
         generate_otp(code.as_str())
@@ -173,28 +175,28 @@ fn get(is_password: &bool, is_encrypted: &str, pass: &String, x: &str) -> String
     otp
 }
 
-fn ls(alias: &Option<String>, is_password: &bool) {
-    let pass = if *is_password {
-        input_password()
-    } else {
-        "".to_string()
-    };
+fn ls(alias: &Option<String>, unencrypt: &bool) {
     let lines = read_file_to_vec();
+    let pass = if *unencrypt {
+        "".to_string()
+    } else {
+        input_password()
+    };
     if alias.is_none() {
         println!("Alias\tOTP");
     }
     for l in lines {
         let x: Vec<&str> = l.split(DELIMETER).collect();
         let alias_curr = x[0];
-        let is_encrypted = x[2];
+        let unencrypt_curr = x[2];
         if alias.is_some() {
             if alias.as_ref().unwrap() == alias_curr {
-                let otp = get(&is_password, &is_encrypted, &pass, &x[1]);
+                let otp = get(&unencrypt, &unencrypt_curr, &pass, &x[1]);
                 println!("{otp}");
                 break;
             }
         } else {
-            let otp = get(&is_password, &is_encrypted, &pass, &x[1]);
+            let otp = get(&unencrypt, &unencrypt_curr, &pass, &x[1]);
             println!("{alias_curr}\t{otp}");
         }
     }
