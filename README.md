@@ -43,15 +43,16 @@
 
 Simple cli OTP app written in Rust. Mainly for self education and self use.
 It uses several crates:
-- magic crypt
-- koibumi-base32
-- totp-lite
+- [https://crates.io/crates/clap](clap)
+- [https://crates.io/crates/magic-crypt](magic crypt)
+- [https://crates.io/crates/data-encoding](data-encoding)
+- [https://crates.io/crates/totp-lite](totp-lite)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### Built With
 
-* RUST
+* RUST 1.72
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -71,29 +72,43 @@ No installation - portable, one executable file
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-Add new record -> creates a file where alias and unencrypted code is saved
+Add new record -> creates a file "codex" in the current directory, 
+where alias and encrypted code is saved:
+
 `hermes add --alias <alias> --code <code>`
+
 or
+
 `hermes add -a <alias> -c <code>`
 
 Currently alias should contain only alphanumeric symbols.
 
 Remove record
+
 `hermes remove --alias <alias>`
+
 or
+
 `hermes remove -a <alias>`
 
 Update code for existing alias
+
 `hermes update --alias <alias>`
+
 or
+
 `hermes update -a <alias>`
 
 Get OTP by alias
+
 `hermes ls --alias <alias>`
+
 or
+
 `hermes ls -a <alias>`
 
 Get all OTP codes
+
 `hermes ls`
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -123,6 +138,7 @@ Don't forget to give the project a star! Thanks again!
 5. Open a Pull Request
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 <!-- LICENSE -->
 ## License
 
