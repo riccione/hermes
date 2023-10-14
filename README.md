@@ -44,7 +44,7 @@
 Simple cli OTP app written in Rust. Mainly for self education and self use.
 It uses several crates:
 - [https://crates.io/crates/clap](clap)
-- [https://crates.io/crates/magic-crypt](magic crypt)
+- [https://crates.io/crates/magic-crypt](magic-crypt)
 - [https://crates.io/crates/data-encoding](data-encoding)
 - [https://crates.io/crates/totp-lite](totp-lite)
 
