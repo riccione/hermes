@@ -111,6 +111,9 @@ Get all OTP codes
 
 `hermes ls`
 
+By default hermes encrypts code with AES-256, if you want to store code as a
+plain text pass `--unencrypt` or `-u`.
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- ROADMAP -->
