@@ -271,15 +271,6 @@ fn input_password() -> String {
     let password = rpassword::prompt_password("Enter password: ")
         .expect("Failed to read password");
     password
-    /*
-    println!("{}", password);
-    let mut input = String::new();
-    print!("Enter password: ");
-    let _ = io::stdout().flush();
-    let stdin = io::stdin();
-    stdin.read_line(&mut input).expect("Could not read password");
-    input
-    */
 }
 
 /*
