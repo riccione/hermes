@@ -183,7 +183,7 @@ fn ls(alias: &Option<String>, unencrypt: &bool) {
         input_password()
     };
     if alias.is_none() {
-        println!("Alias\t\tOTP");
+        println!("{0: <15} | {1: <15}", "Alias", "OTP");
     }
     for l in lines {
         let x: Vec<&str> = l.split(DELIMETER).collect();
@@ -197,7 +197,7 @@ fn ls(alias: &Option<String>, unencrypt: &bool) {
             }
         } else {
             let otp = get(&unencrypt, &unencrypt_curr, &pass, &x[1]);
-            println!("{alias_curr}\t\t{otp}");
+            println!("{0: <15} | {1: <15}", alias_curr, otp);
         }
     }
     std::process::exit(0);
@@ -268,12 +268,18 @@ fn generate_otp(x: &str) -> String {
 }
 
 fn input_password() -> String {
+    let password = rpassword::prompt_password("Enter password: ")
+        .expect("Failed to read password");
+    password
+    /*
+    println!("{}", password);
     let mut input = String::new();
     print!("Enter password: ");
     let _ = io::stdout().flush();
     let stdin = io::stdin();
     stdin.read_line(&mut input).expect("Could not read password");
     input
+    */
 }
 
 /*
