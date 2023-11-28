@@ -3,11 +3,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use totp_lite::{totp_custom, Sha1, DEFAULT_STEP};
 use data_encoding::BASE32;
 use std::fs::{File, OpenOptions};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::io::{self, BufRead, BufReader, Write};
 use magic_crypt::{new_magic_crypt, MagicCryptTrait};
+use dirs;
 
 const FILE_CODEX: &str = "codex";
+const PROJECT: &str = "hermes";
 // Odyssea V 45
 const TALARIA: &str = "immortales, aureos";
 const DELIMETER: &str = ":";
@@ -54,14 +56,20 @@ enum Commands {
 }
 
 fn main() {
+    // trying dirs func
+    let mut codex_path = dirs::config_dir()
+        .expect("Failed to get config path");
+    codex_path.push(PROJECT);
+    codex_path.push(FILE_CODEX);
+    
     let args = Args::parse();
-
+    
     match &args.command {
         Commands::Add { alias, code, unencrypt } => {
             if code.is_some() && alias.is_some() {
                 if !alias.as_ref().unwrap().contains(":") || 
                     !code.as_ref().unwrap().contains(":") {
-                    add(alias.as_ref().unwrap().as_str(), 
+                    add(&codex_path, alias.as_ref().unwrap().as_str(), 
                         code.as_ref().unwrap().as_str(),
                         &unencrypt);
                 } else {
@@ -75,7 +83,7 @@ fn main() {
         },
         Commands::Remove { alias } => {
             if alias.is_some() {
-                remove(alias.as_ref().unwrap().as_str());
+                remove(&codex_path, alias.as_ref().unwrap().as_str());
             } else {
                 println!("Error: no arguments for remove command");
                 std::process::exit(1);
@@ -83,18 +91,18 @@ fn main() {
         },
         Commands::Update { alias, code, unencrypt } => {
             if alias.is_some() && code.is_some() {
-                update_code(alias.as_ref().unwrap().as_str(), 
+                update_code(&codex_path, alias.as_ref().unwrap().as_str(), 
                     code.as_ref().unwrap().as_str(),
                     &unencrypt);
             }
         },
         Commands::Ls { alias, unencrypt } => {
-            ls(alias, unencrypt);
+            ls(&codex_path, alias, unencrypt);
         }
     };
 }
 
-fn add(alias: &str, code: &str, unencrypt: &bool) {
+fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool) {
     // create a storage file if it does not exist
     let code_encrypted = if *unencrypt { 
         code.to_string()
@@ -122,7 +130,7 @@ fn add(alias: &str, code: &str, unencrypt: &bool) {
         is_unencrypted,
         sha);
     
-    if file_exists() {
+    if file_exists(codex_path) {
         // check if alias already exists and return error message
         if alias_exists(&alias) == true {
             println!("Alias already exists, please select another one");
@@ -130,25 +138,27 @@ fn add(alias: &str, code: &str, unencrypt: &bool) {
         }
         let mut data_file = OpenOptions::new()
             .append(true)
-            .open(FILE_CODEX)
+            .open(codex_path)
             .expect("cannot open file");
         data_file
             .write(data.as_bytes())
             .expect("write failed");
     } else {
-        write_to_file(&data);
+        if create_path(codex_path) {
+            write_to_file(codex_path, &data);
+        }
     }
     let otp = generate_otp(code);
     println!("{otp}");
 }
 
-fn update_code(alias: &str, code: &str, unenc: &bool) {
-    remove(&alias);
-    add(&alias, &code, &unenc);
+fn update_code(codex_path: &PathBuf, alias: &str, code: &str, unenc: &bool) {
+    remove(&codex_path, &alias);
+    add(&codex_path, &alias, &code, &unenc);
 }
 
-fn remove(alias: &str) {
-    let lines = read_file_to_vec();
+fn remove(path: &PathBuf, alias: &str) {
+    let lines = read_file_to_vec(&path);
     let mut data = "".to_owned();
     for l in lines {
         let x: Vec<&str> = l.split(DELIMETER).collect();
@@ -156,7 +166,7 @@ fn remove(alias: &str) {
             data = data + &l + "\n";
         }
     }
-    write_to_file(&data);
+    write_to_file(path, &data);
 }
 
 fn get(unenc: &bool, unencrypt_curr: &str, pass: &String, x: &str) -> String {
@@ -175,8 +185,8 @@ fn get(unenc: &bool, unencrypt_curr: &str, pass: &String, x: &str) -> String {
     otp
 }
 
-fn ls(alias: &Option<String>, unencrypt: &bool) {
-    let lines = read_file_to_vec();
+fn ls(codex_path: &PathBuf, alias: &Option<String>, unencrypt: &bool) {
+    let lines = read_file_to_vec(&codex_path);
     let pass = if *unencrypt {
         "".to_string()
     } else {
@@ -203,22 +213,25 @@ fn ls(alias: &Option<String>, unencrypt: &bool) {
     std::process::exit(0);
 }
 
-fn read_file_to_vec() -> Vec<String> {
-    if file_exists() {
-        let file = File::open(FILE_CODEX)
+fn read_file_to_vec(path: &PathBuf) -> Vec<String> {
+    if file_exists(path) {
+        let file = File::open(path)
             .expect("There is no codex file");
         let file = BufReader::new(file);
         file.lines()
             .map(|x| x.expect("Could not parse line"))
             .collect()
     } else {
-        println!("{FILE_CODEX} file does not exist");
+        println!("{FILE_CODEX} file does not exist.\n\
+            Please use hermes add command\n\
+            or copy existing {FILE_CODEX} to a default location");
         std::process::exit(1);
     }
 }
 
-fn file_exists() -> bool {
-    Path::new(FILE_CODEX).exists()
+fn file_exists(path: &PathBuf) -> bool {
+    Path::new(&path).exists()
+    //Path::new(FILE_CODEX).exists()
 }
 
 fn alias_exists(alias: &str) -> bool {
@@ -236,8 +249,25 @@ fn alias_exists(alias: &str) -> bool {
     false
 }
 
-fn write_to_file(data: &str) {
-    std::fs::write(FILE_CODEX, data).expect("write failed");
+fn write_to_file(path: &PathBuf, data: &str) {
+    match std::fs::write(path, data) {
+        Ok(_) => {
+            println!("Record saved in a codex");
+        }
+        Err(e) => {
+            eprintln!("Failed to save codex. Error: {e}");
+        }
+    }
+    //std::fs::write(FILE_CODEX, data).expect("write failed");
+}
+
+fn create_path(path: &PathBuf) -> bool {
+    let mut p: PathBuf = path.to_path_buf();
+    p.pop();
+    match std::fs::create_dir_all(&p) {
+        Ok(_) => true,
+        Err(_e) => false,
+    }
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
