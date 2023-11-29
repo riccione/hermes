@@ -145,7 +145,8 @@ fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool) {
             .expect("write failed");
     } else {
         if create_path(codex_path) {
-            write_to_file(codex_path, &data);
+            let msg = "Record saved to codex";
+            write_to_file(codex_path, &data, &msg);
         }
     }
     let otp = generate_otp(code);
@@ -153,20 +154,30 @@ fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool) {
 }
 
 fn update_code(codex_path: &PathBuf, alias: &str, code: &str, unenc: &bool) {
-    remove(&codex_path, &alias);
-    add(&codex_path, &alias, &code, &unenc);
+    if remove(&codex_path, &alias) {
+        add(&codex_path, &alias, &code, &unenc);
+    } else {
+        println!("No record for {alias} has been located in the codex file");
+    }
 }
 
-fn remove(path: &PathBuf, alias: &str) {
+fn remove(path: &PathBuf, alias: &str) -> bool {
     let lines = read_file_to_vec(&path);
     let mut data = "".to_owned();
+    let mut f: bool = false;
     for l in lines {
         let x: Vec<&str> = l.split(DELIMETER).collect();
         if x[0] != alias {
             data = data + &l + "\n";
+        } else {
+            f = true;
         }
     }
-    write_to_file(path, &data);
+    if f {
+        let msg = format!("Record for {alias} is removed from codex");
+        write_to_file(path, &data, &msg);
+    }
+    f
 }
 
 fn get(unenc: &bool, unencrypt_curr: &str, pass: &String, x: &str) -> String {
@@ -249,10 +260,11 @@ fn alias_exists(alias: &str) -> bool {
     false
 }
 
-fn write_to_file(path: &PathBuf, data: &str) {
+fn write_to_file(path: &PathBuf, data: &str, msg: &str) {
     match std::fs::write(path, data) {
         Ok(_) => {
-            println!("Record saved in a codex");
+            println!("{msg}");
+            // println!("Record saved in a codex");
         }
         Err(e) => {
             eprintln!("Failed to save codex. Error: {e}");
