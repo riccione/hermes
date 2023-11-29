@@ -56,7 +56,7 @@ enum Commands {
 }
 
 fn main() {
-    // trying dirs func
+    // using dirs fn to get location of config directory
     let mut codex_path = dirs::config_dir()
         .expect("Failed to get config path");
     codex_path.push(PROJECT);
@@ -242,7 +242,6 @@ fn read_file_to_vec(path: &PathBuf) -> Vec<String> {
 
 fn file_exists(path: &PathBuf) -> bool {
     Path::new(&path).exists()
-    //Path::new(FILE_CODEX).exists()
 }
 
 fn alias_exists(alias: &str) -> bool {
@@ -264,13 +263,11 @@ fn write_to_file(path: &PathBuf, data: &str, msg: &str) {
     match std::fs::write(path, data) {
         Ok(_) => {
             println!("{msg}");
-            // println!("Record saved in a codex");
         }
         Err(e) => {
             eprintln!("Failed to save codex. Error: {e}");
         }
     }
-    //std::fs::write(FILE_CODEX, data).expect("write failed");
 }
 
 fn create_path(path: &PathBuf) -> bool {
