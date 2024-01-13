@@ -53,6 +53,11 @@ enum Commands {
         #[clap(short = 'u', long)]
         unencrypt: bool,
     },
+    /// Show location of codex file
+    Config {
+        #[clap(short = 'f', long)]
+        file: Option<String>,
+    },
 }
 
 fn main() {
@@ -98,6 +103,13 @@ fn main() {
         },
         Commands::Ls { alias, unencrypt } => {
             ls(&codex_path, alias, unencrypt);
+        },
+        Commands::Config { file: _ } => {
+            let p = codex_path.into_os_string().into_string();
+            match p {
+                Ok(x) => { println!("{x}"); },
+                Err(e) => { println!("Error: {:?}", e); }
+            }
         }
     };
 }
