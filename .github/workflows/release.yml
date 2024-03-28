@@ -59,19 +59,14 @@ jobs:
         command: build
         args: --release --locked
     
-    # TODO: remove this step, due to the flag strip under Cargo.toml
-    - name: Strip binary
-      if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
-      run: strip target/release/hermes
-
     # experimental part for UPX
-    - name: compress with UPX
-      if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'
+    - name: run UPX on Linux
+      if: matrix.os == 'ubuntu-latest'
       uses: crazy-max/ghaction-upx@v3
       with:
         version: latest
         files: |
-          target/release/hermes*
+          target/release/hermes
         args: --best --lzma
     
     - name: Upload binaries to release
