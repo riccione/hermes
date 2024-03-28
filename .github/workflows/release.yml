@@ -58,11 +58,23 @@ jobs:
         use-cross: ${{ matrix.use-cross }}
         command: build
         args: --release --locked
-
+    
+    # TODO: remove this step, due to the flag strip under Cargo.toml
     - name: Strip binary
       if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
       run: strip target/release/hermes
 
+    # experimental part for UPX
+    - name: compress with UPX
+      if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'
+      uses: crazy-max/ghaction-upx@v3
+      with:
+        version: latest
+        files: |
+          target/release/hermes*
+        args: --best --lzma
+      run: strip target/release/hermes
+    
     - name: Upload binaries to release
       uses: svenstaro/upload-release-action@v2
       with:
