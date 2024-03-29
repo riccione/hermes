@@ -153,7 +153,7 @@ fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool) {
     
     if file_exists(codex_path) {
         // check if alias already exists and return error message
-        if alias_exists(&alias) == true {
+        if alias_exists(&alias, &codex_path) == true {
             println!("Alias already exists, please select another one");
             std::process::exit(1);
         }
@@ -265,9 +265,9 @@ fn file_exists(path: &PathBuf) -> bool {
     Path::new(&path).exists()
 }
 
-fn alias_exists(alias: &str) -> bool {
+fn alias_exists(alias: &str, codex_path: &PathBuf) -> bool {
     // read codes file and search for alias
-    if let Ok(lines) = read_lines(FILE_CODEX) {
+    if let Ok(lines) = read_lines(codex_path) {
         for line in lines {
             if let Ok(l) = line {
                 let x: Vec<_> = l.split(":").collect();

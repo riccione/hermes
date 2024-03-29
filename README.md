@@ -69,16 +69,11 @@ No installation - portable, one executable file
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- USAGE EXAMPLES -->
-## Known issues
-The app allows alias duplicates and this can lead to unexpected results.
-Currently -> use only unique aliases.
-
 <!-- TODO -->
 ## TODO
-- fix bug with duplicated aliases
 - split code to modules
 - clean the code
+- write unit test
 
 <!-- USAGE EXAMPLES -->
 ## Usage
