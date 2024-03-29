@@ -69,12 +69,6 @@ No installation - portable, one executable file
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- TODO -->
-## TODO
-- split code to modules
-- clean the code
-- write unit test
-
 <!-- USAGE EXAMPLES -->
 ## Usage
 
@@ -130,9 +124,7 @@ plain text pass `--unencrypt` or `-u`.
 ## Roadmap
 
 - [ ] Add unit tests
-- [ ] Add Changelog
 - [ ] Refactor code using best Rust practices
-- [ ] Maybe add GUI
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
