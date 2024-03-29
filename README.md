@@ -52,7 +52,7 @@ It uses several crates:
 
 ### Built With
 
-* RUST 1.72
+* RUST 1.77
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -68,6 +68,17 @@ To build install Rust compiler [https://www.rust-lang.org/](https://www.rust-lan
 No installation - portable, one executable file
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- USAGE EXAMPLES -->
+## Known issues
+The app allows alias duplicates and this can lead to unexpected results.
+Currently -> use only unique aliases.
+
+<!-- TODO -->
+## TODO
+- fix bug with duplicated aliases
+- split code to modules
+- clean the code
 
 <!-- USAGE EXAMPLES -->
 ## Usage
@@ -110,6 +121,10 @@ or
 Get all OTP codes
 
 `hermes ls`
+
+Show location of codex file, where actually all codes are saved
+
+`hermes config`
 
 By default hermes encrypts code with AES-256, if you want to store code as a
 plain text pass `--unencrypt` or `-u`.
