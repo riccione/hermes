@@ -70,17 +70,19 @@ fn main() {
     match &args.command {
         Commands::Add { alias, code, unencrypt } => {
             if code.is_some() && alias.is_some() {
-                if !alias.as_ref().unwrap().contains(":") || 
-                    !code.as_ref().unwrap().contains(":") {
-                    add(&codex_path, alias.as_ref().unwrap().as_str(), 
-                        code.as_ref().unwrap().as_str(),
+                let code = code.as_ref().unwrap();
+                let alias = alias.as_ref().unwrap();
+                if !alias.contains(":") {
+                    add(&codex_path, alias.as_str(), 
+                        code.as_str(),
                         &unencrypt);
                 } else {
-                    println!("Don't use : in alias or code'");
+                    println!("Don't use ':' in alias or code");
                     std::process::exit(1);
                 }
             } else {
                 println!("Please provide valid alias and code");
+                println!("See 'hermes help add' for more information");
                 std::process::exit(1);
             }
         },
@@ -117,6 +119,10 @@ fn main() {
 }
 
 fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool) {
+    // make code uppercase to solve the bug #1
+    let binding = code.to_uppercase();
+    let code = binding.as_str();
+
     // create a storage file if it does not exist
     let code_encrypted = if *unencrypt { 
         code.to_string()
