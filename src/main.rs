@@ -82,7 +82,7 @@ fn main() {
                 }
             } else {
                 println!("Please provide valid alias and code");
-                println!("See 'hermes help add' for more information");
+                println!("See 'hermes help add/update' for more information");
                 std::process::exit(1);
             }
         },
@@ -91,6 +91,7 @@ fn main() {
                 remove(&codex_path, alias.as_ref().unwrap().as_str());
             } else {
                 println!("Error: no arguments for remove command");
+                println!("See 'hermes help remove' for more information");
                 std::process::exit(1);
             }
         },
