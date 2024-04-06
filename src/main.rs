@@ -2,23 +2,11 @@ use clap::{Parser, Subcommand};
 use std::time::{SystemTime, UNIX_EPOCH};
 use totp_lite::{totp_custom, Sha1, DEFAULT_STEP};
 use data_encoding::BASE32;
-// use std::fs::{File, OpenOptions};
-//use std::fs::{OpenOptions};
-// use std::path::{Path, PathBuf};
 use std::path::{PathBuf};
-// use std::io::{self, BufRead, BufReader, Write};
-//use std::io::{Write};
 use magic_crypt::{new_magic_crypt, MagicCryptTrait};
-// use dirs;
 
 mod config;
 mod file;
-
-// const FILE_CODEX: &str = "codex";
-// const PROJECT: &str = "hermes";
-// Odyssea V 45
-// const TALARIA: &str = "immortales, aureos";
-// const DELIMETER: &str = ":";
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)] // Read from Cargo.toml
@@ -252,69 +240,6 @@ fn ls(codex_path: &PathBuf, alias: &Option<String>, unencrypt: &bool) {
     }
     std::process::exit(0);
 }
-
-/*
-fn read_file_to_vec(path: &PathBuf) -> Vec<String> {
-    if file::file_exists(path) {
-        let file = File::open(path)
-            .expect("There is no codex file");
-        let file = BufReader::new(file);
-        file.lines()
-            .map(|x| x.expect("Could not parse line"))
-            .collect()
-    } else {
-        println!("{FILE_CODEX} file does not exist.\n\
-            Please use hermes add command\n\
-            or copy existing {FILE_CODEX} to a default location");
-        std::process::exit(1);
-    }
-}
-
-fn file_exists(path: &PathBuf) -> bool {
-    Path::new(&path).exists()
-}
-
-fn alias_exists(alias: &str, codex_path: &PathBuf) -> bool {
-    // read codes file and search for alias
-    if let Ok(lines) = read_lines(codex_path) {
-        for line in lines {
-            if let Ok(l) = line {
-                let x: Vec<_> = l.split(":").collect();
-                if x[0] == alias {
-                    return true;
-                }
-            }
-        }
-    }
-    false
-}
-
-fn write_to_file(path: &PathBuf, data: &str, msg: &str) {
-    match std::fs::write(path, data) {
-        Ok(_) => {
-            println!("{msg}");
-        }
-        Err(e) => {
-            eprintln!("Failed to save codex. Error: {e}");
-        }
-    }
-}
-
-fn create_path(path: &PathBuf) -> bool {
-    let mut p: PathBuf = path.to_path_buf();
-    p.pop();
-    match std::fs::create_dir_all(&p) {
-        Ok(_) => true,
-        Err(_e) => false,
-    }
-}
-
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where P: AsRef<Path>, {
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
-}
-*/
 
 fn generate_otp(x: &str) -> String {
     // handles case where password cannot decrypt the code
