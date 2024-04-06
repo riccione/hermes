@@ -2,17 +2,23 @@ use clap::{Parser, Subcommand};
 use std::time::{SystemTime, UNIX_EPOCH};
 use totp_lite::{totp_custom, Sha1, DEFAULT_STEP};
 use data_encoding::BASE32;
-use std::fs::{File, OpenOptions};
-use std::path::{Path, PathBuf};
-use std::io::{self, BufRead, BufReader, Write};
+// use std::fs::{File, OpenOptions};
+//use std::fs::{OpenOptions};
+// use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
+// use std::io::{self, BufRead, BufReader, Write};
+//use std::io::{Write};
 use magic_crypt::{new_magic_crypt, MagicCryptTrait};
-use dirs;
+// use dirs;
 
-const FILE_CODEX: &str = "codex";
-const PROJECT: &str = "hermes";
+mod config;
+mod file;
+
+// const FILE_CODEX: &str = "codex";
+// const PROJECT: &str = "hermes";
 // Odyssea V 45
-const TALARIA: &str = "immortales, aureos";
-const DELIMETER: &str = ":";
+// const TALARIA: &str = "immortales, aureos";
+// const DELIMETER: &str = ":";
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)] // Read from Cargo.toml
@@ -60,11 +66,12 @@ enum Commands {
 
 fn main() {
     // using dirs fn to get location of config directory
-    let mut codex_path = dirs::config_dir()
-        .expect("Failed to get config path");
-    codex_path.push(PROJECT);
-    codex_path.push(FILE_CODEX);
-    
+    // let mut codex_path = dirs::config_dir()
+    //     .expect("Failed to get config path");
+    // codex_path.push(file::PROJECT);
+    // codex_path.push(file::FILE_CODEX);
+    let codex_path: PathBuf = file::get_codex_path();
+
     let args = Args::parse();
     
     match &args.command {
@@ -106,7 +113,7 @@ fn main() {
             ls(&codex_path, alias, unencrypt);
         },
         Commands::Config { } => {
-            if file_exists(&codex_path) {
+            if file::file_exists(&codex_path) {
                 let p = codex_path.into_os_string().into_string();
                 match p {
                     Ok(x) => { println!("{x}"); },
@@ -151,23 +158,24 @@ fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool) {
         is_unencrypted,
         sha);
     
-    if file_exists(codex_path) {
+    if file::file_exists(codex_path) {
         // check if alias already exists and return error message
-        if alias_exists(&alias, &codex_path) == true {
+        if file::alias_exists(&alias, &codex_path) == true {
             println!("Alias already exists, please select another one");
             std::process::exit(1);
         }
-        let mut data_file = OpenOptions::new()
-            .append(true)
-            .open(codex_path)
-            .expect("cannot open file");
-        data_file
-            .write(data.as_bytes())
-            .expect("write failed");
+        file::write(codex_path, &data);
+        // let mut data_file = OpenOptions::new()
+        //     .append(true)
+        //     .open(codex_path)
+        //     .expect("cannot open file");
+        // data_file
+        //     .write(data.as_bytes())
+        //     .expect("write failed");
     } else {
-        if create_path(codex_path) {
+        if file::create_path(codex_path) {
             let msg = "Record saved to codex";
-            write_to_file(codex_path, &data, &msg);
+            file::write_to_file(codex_path, &data, &msg);
         }
     }
     let otp = generate_otp(code);
@@ -183,11 +191,11 @@ fn update_code(codex_path: &PathBuf, alias: &str, code: &str, unenc: &bool) {
 }
 
 fn remove(path: &PathBuf, alias: &str) -> bool {
-    let lines = read_file_to_vec(&path);
+    let lines = file::read_file_to_vec(&path);
     let mut data = "".to_owned();
     let mut f: bool = false;
     for l in lines {
-        let x: Vec<&str> = l.split(DELIMETER).collect();
+        let x: Vec<&str> = l.split(config::DELIMETER).collect();
         if x[0] != alias {
             data = data + &l + "\n";
         } else {
@@ -196,7 +204,7 @@ fn remove(path: &PathBuf, alias: &str) -> bool {
     }
     if f {
         let msg = format!("Record for {alias} is removed from codex");
-        write_to_file(path, &data, &msg);
+        file::write_to_file(path, &data, &msg);
     }
     f
 }
@@ -218,7 +226,7 @@ fn get(unenc: &bool, unencrypt_curr: &str, pass: &String, x: &str) -> String {
 }
 
 fn ls(codex_path: &PathBuf, alias: &Option<String>, unencrypt: &bool) {
-    let lines = read_file_to_vec(&codex_path);
+    let lines = file::read_file_to_vec(&codex_path);
     let pass = if *unencrypt {
         "".to_string()
     } else {
@@ -228,7 +236,7 @@ fn ls(codex_path: &PathBuf, alias: &Option<String>, unencrypt: &bool) {
         println!("{0: <15} | {1: <15}", "Alias", "OTP");
     }
     for l in lines {
-        let x: Vec<&str> = l.split(DELIMETER).collect();
+        let x: Vec<&str> = l.split(config::DELIMETER).collect();
         let alias_curr = x[0];
         let unencrypt_curr = x[2];
         if alias.is_some() {
@@ -245,8 +253,9 @@ fn ls(codex_path: &PathBuf, alias: &Option<String>, unencrypt: &bool) {
     std::process::exit(0);
 }
 
+/*
 fn read_file_to_vec(path: &PathBuf) -> Vec<String> {
-    if file_exists(path) {
+    if file::file_exists(path) {
         let file = File::open(path)
             .expect("There is no codex file");
         let file = BufReader::new(file);
@@ -305,10 +314,11 @@ where P: AsRef<Path>, {
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
 }
+*/
 
 fn generate_otp(x: &str) -> String {
     // handles case where password cannot decrypt the code
-    if x == TALARIA {
+    if x == config::TALARIA {
         return "Error: cannot decrypt".to_string()
     }
 
@@ -344,7 +354,7 @@ fn crypt(encrypt: bool, code: &String, password: &str) -> String {
     } else {
         let decrypted = match mcrypt.decrypt_base64_to_string(code) {
             Ok(decrypted) => decrypted,
-            Err(_) => TALARIA.to_string(),
+            Err(_) => config::TALARIA.to_string(),
         };
         decrypted
     }
