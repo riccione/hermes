@@ -76,8 +76,8 @@ fn main() {
                     std::process::exit(1);
                 }
             } else {
-                println!("Please provide valid alias and code");
-                println!("See 'hermes help add/update' for more information");
+                eprintln!("Please provide valid alias and code");
+                eprintln!("See 'hermes help add/update' for more information");
                 std::process::exit(1);
             }
         },
