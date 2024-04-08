@@ -25,6 +25,8 @@ enum Commands {
         code: Option<String>,
         #[clap(short = 'u', long)]
         unencrypt: bool,
+        #[clap(short = 'p', long)]
+        password: Option<String>,
     },
     /// Remove code from the hermes
     Remove {
@@ -39,6 +41,8 @@ enum Commands {
         code: Option<String>,
         #[clap(short = 'u', long)]
         unencrypt: bool,
+        #[clap(short = 'p', long)]
+        password: Option<String>,
     },
     /// Get codes for all/alias records
     Ls {
@@ -46,6 +50,8 @@ enum Commands {
         alias: Option<String>,
         #[clap(short = 'u', long)]
         unencrypt: bool,
+        #[clap(short = 'p', long)]
+        password: Option<String>,
     },
     /// Show location of codex file
     Config {
@@ -53,24 +59,19 @@ enum Commands {
 }
 
 fn main() {
-    // using dirs fn to get location of config directory
-    // let mut codex_path = dirs::config_dir()
-    //     .expect("Failed to get config path");
-    // codex_path.push(file::PROJECT);
-    // codex_path.push(file::FILE_CODEX);
     let codex_path: PathBuf = file::get_codex_path();
 
     let args = Args::parse();
     
     match &args.command {
-        Commands::Add { alias, code, unencrypt } => {
+        Commands::Add { alias, code, unencrypt, password } => {
             if code.is_some() && alias.is_some() {
                 let code = code.as_ref().unwrap();
                 let alias = alias.as_ref().unwrap();
                 if !alias.contains(":") {
                     add(&codex_path, alias.as_str(), 
                         code.as_str(),
-                        &unencrypt);
+                        &unencrypt, password);
                 } else {
                     println!("Don't use ':' in alias or code");
                     std::process::exit(1);
@@ -90,15 +91,15 @@ fn main() {
                 std::process::exit(1);
             }
         },
-        Commands::Update { alias, code, unencrypt } => {
+        Commands::Update { alias, code, unencrypt, password } => {
             if alias.is_some() && code.is_some() {
                 update_code(&codex_path, alias.as_ref().unwrap().as_str(), 
                     code.as_ref().unwrap().as_str(),
-                    &unencrypt);
+                    &unencrypt, password);
             }
         },
-        Commands::Ls { alias, unencrypt } => {
-            ls(&codex_path, alias, unencrypt);
+        Commands::Ls { alias, unencrypt, password } => {
+            ls(&codex_path, alias, unencrypt, password);
         },
         Commands::Config { } => {
             if file::file_exists(&codex_path) {
@@ -114,7 +115,7 @@ fn main() {
     };
 }
 
-fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool) {
+fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool, password: &Option<String>) {
     // make code uppercase to solve the bug #1
     let binding = code.to_uppercase();
     let code = binding.as_str();
@@ -123,9 +124,17 @@ fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool) {
     let code_encrypted = if *unencrypt { 
         code.to_string()
     } else {
-        crypt(true, 
-            &code.to_string(), 
-            &input_password())
+
+        match password {
+            Some(p) => {
+                crypt(true, &code.to_string(), p)
+            },
+            _ => {
+                crypt(true, 
+                    &code.to_string(), 
+                    &input_password())
+            }
+        }
     };
     let is_unencrypted = *unencrypt as u8;
     
@@ -149,7 +158,7 @@ fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool) {
     if file::file_exists(codex_path) {
         // check if alias already exists and return error message
         if file::alias_exists(&alias, &codex_path) == true {
-            println!("Alias already exists, please select another one");
+            eprintln!("Alias already exists, please select another one");
             std::process::exit(1);
         }
         file::write(codex_path, &data);
@@ -170,9 +179,10 @@ fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool) {
     println!("{otp}");
 }
 
-fn update_code(codex_path: &PathBuf, alias: &str, code: &str, unenc: &bool) {
+fn update_code(codex_path: &PathBuf, alias: &str, code: &str, unenc: &bool, 
+    password: &Option<String>) {
     if remove(&codex_path, &alias) {
-        add(&codex_path, &alias, &code, &unenc);
+        add(&codex_path, &alias, &code, &unenc, &password);
     } else {
         println!("No record for {alias} has been located in the codex file");
     }
@@ -191,7 +201,7 @@ fn remove(path: &PathBuf, alias: &str) -> bool {
         }
     }
     if f {
-        let msg = format!("Record for {alias} is removed from codex");
+        let msg = format!("Record for {alias} has been removed from codex");
         file::write_to_file(path, &data, &msg);
     }
     f
@@ -213,12 +223,18 @@ fn get(unenc: &bool, unencrypt_curr: &str, pass: &String, x: &str) -> String {
     otp
 }
 
-fn ls(codex_path: &PathBuf, alias: &Option<String>, unencrypt: &bool) {
+fn ls(codex_path: &PathBuf, alias: &Option<String>, unencrypt: &bool, password: &Option<String>) {
     let lines = file::read_file_to_vec(&codex_path);
-    let pass = if *unencrypt {
+    let pass: String = if *unencrypt {
         "".to_string()
     } else {
-        input_password()
+        
+        match password {
+            Some(p) => p.to_string(),
+            _ => input_password()
+        }
+        
+        // input_password()
     };
     if alias.is_none() {
         println!("{0: <15} | {1: <15}", "Alias", "OTP");

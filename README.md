@@ -63,6 +63,9 @@ It uses several crates:
 
 To build install Rust compiler [https://www.rust-lang.org/](https://www.rust-lang.org/)
 
+For tests - run:
+`cargo test -- --test-threads=1`
+
 ### Installation
 
 No installation - portable, one executable file
