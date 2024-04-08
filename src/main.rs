@@ -162,13 +162,6 @@ fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool, password
             std::process::exit(1);
         }
         file::write(codex_path, &data);
-        // let mut data_file = OpenOptions::new()
-        //     .append(true)
-        //     .open(codex_path)
-        //     .expect("cannot open file");
-        // data_file
-        //     .write(data.as_bytes())
-        //     .expect("write failed");
     } else {
         if file::create_path(codex_path) {
             let msg = "Record saved to codex";
