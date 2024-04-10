@@ -117,13 +117,10 @@ pub fn ls(codex_path: &PathBuf, alias: &Option<String>, unencrypt: &bool, passwo
     let pass: String = if *unencrypt {
         "".to_string()
     } else {
-        
         match password {
             Some(p) => p.to_string(),
             _ => input_password()
         }
-        
-        // input_password()
     };
     if alias.is_none() {
         println!("{0: <15} | {1: <15}", "Alias", "OTP");

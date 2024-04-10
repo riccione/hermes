@@ -1,5 +1,3 @@
-//use std::process::Command;
-use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use assert_cmd::Command;
 
@@ -26,7 +24,7 @@ fn fail_add_new_code() -> Result<(), Box<dyn std::error::Error>> {
         .arg("add")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("Please provide valid alias and code"));
+        .stderr(predicate::str::contains("error: the following required arguments were not provided"));
 
     Ok(())
 }
@@ -36,7 +34,7 @@ fn add_remove_code_simple() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("hermes")
         .expect("binary exists");
 
-    let output = cmd.arg("add")
+    cmd.arg("add")
         .args(&["-a", ALIAS])
         .args(&["-c", CODE])
         .args(&["-p", PASSWORD])
@@ -47,7 +45,7 @@ fn add_remove_code_simple() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("hermes")
         .expect("binary exists");
 
-    let output = cmd.arg("add")
+    cmd.arg("add")
         .args(&["-a", ALIAS])
         .args(&["-c", CODE])
         .args(&["-p", PASSWORD])
@@ -60,7 +58,7 @@ fn add_remove_code_simple() -> Result<(), Box<dyn std::error::Error>> {
 
     let stdout_removed = format!("Record for {ALIAS} has been removed from codex");
 
-    let output = cmd.arg("remove")
+    cmd.arg("remove")
         .args(&["-a", ALIAS])
         .assert()
         .success()
@@ -77,7 +75,7 @@ fn add_update_remove_code_simple() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("hermes")
         .expect("binary exists");
 
-    let output = cmd.arg("add")
+    cmd.arg("add")
         .args(&["-a", alias])
         .args(&["-c", CODE])
         .args(&["-p", PASSWORD])
@@ -88,7 +86,7 @@ fn add_update_remove_code_simple() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("hermes")
         .expect("binary exists");
 
-    let output = cmd.arg("update")
+    cmd.arg("update")
         .args(&["-a", alias])
         .args(&["-c", CODE])
         .args(&["-p", PASSWORD])
@@ -99,7 +97,7 @@ fn add_update_remove_code_simple() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("hermes")
         .expect("binary exists");
 
-    let output = cmd.arg("remove")
+    cmd.arg("remove")
         .args(&["-a", alias])
         .assert()
         .success()

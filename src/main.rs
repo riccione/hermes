@@ -17,9 +17,9 @@ enum Commands {
     /// Adds code to the hermes
     Add {
         #[clap(short = 'a', long)]
-        alias: Option<String>,
+        alias: String,
         #[clap(short = 'c', long)]
-        code: Option<String>,
+        code: String,
         #[clap(short = 'u', long)]
         unencrypt: bool,
         #[clap(short = 'p', long)]
@@ -28,14 +28,14 @@ enum Commands {
     /// Remove code from the hermes
     Remove {
         #[clap(short = 'a', long)]
-        alias: Option<String>,
+        alias: String,
     },
     /// Update code by alias
     Update {
         #[clap(short = 'a', long)]
-        alias: Option<String>,
+        alias: String,
         #[clap(short = 'c', long)]
-        code: Option<String>,
+        code: String,
         #[clap(short = 'u', long)]
         unencrypt: bool,
         #[clap(short = 'p', long)]
@@ -62,38 +62,24 @@ fn main() {
     
     match &args.command {
         Commands::Add { alias, code, unencrypt, password } => {
-            if code.is_some() && alias.is_some() {
-                let code = code.as_ref().unwrap();
-                let alias = alias.as_ref().unwrap();
-                if !alias.contains(":") {
-                    cmd::add(&codex_path, alias.as_str(), 
-                        code.as_str(),
-                        &unencrypt, password);
-                } else {
-                    println!("Don't use ':' in alias or code");
-                    std::process::exit(1);
-                }
+            let code = code;
+            let alias = alias;
+            if !alias.contains(":") {
+                cmd::add(&codex_path, alias.as_str(), 
+                    code.as_str(),
+                    &unencrypt, password);
             } else {
-                eprintln!("Please provide valid alias and code");
-                eprintln!("See 'hermes help add/update' for more information");
+                println!("Don't use ':' in alias or code");
                 std::process::exit(1);
             }
         },
         Commands::Remove { alias } => {
-            if alias.is_some() {
-                cmd::remove(&codex_path, alias.as_ref().unwrap().as_str());
-            } else {
-                println!("Error: no arguments for remove command");
-                println!("See 'hermes help remove' for more information");
-                std::process::exit(1);
-            }
+            cmd::remove(&codex_path, alias.as_str());
         },
         Commands::Update { alias, code, unencrypt, password } => {
-            if alias.is_some() && code.is_some() {
-                cmd::update_code(&codex_path, alias.as_ref().unwrap().as_str(), 
-                    code.as_ref().unwrap().as_str(),
-                    &unencrypt, password);
-            }
+            cmd::update_code(&codex_path, alias.as_str(), 
+                code.as_str(),
+                &unencrypt, password);
         },
         Commands::Ls { alias, unencrypt, password } => {
             cmd::ls(&codex_path, alias, unencrypt, password);
