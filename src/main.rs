@@ -3,7 +3,6 @@ use clap::{Parser, Subcommand};
 use std::path::{PathBuf};
 
 mod cmd;
-mod config;
 mod file;
 mod otp;
 

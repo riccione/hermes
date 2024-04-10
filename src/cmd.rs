@@ -1,8 +1,9 @@
 use data_encoding::BASE32;
 use std::path::{PathBuf};
-use crate::config;
 use crate::file;
 use crate::otp;
+
+const DELIMETER: &str = ":";
 
 pub fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool, password: &Option<String>) {
     // make code uppercase to solve the bug #1
@@ -75,7 +76,7 @@ pub fn remove(path: &PathBuf, alias: &str) -> bool {
     let mut data = "".to_owned();
     let mut f: bool = false;
     for l in lines {
-        let x: Vec<&str> = l.split(config::DELIMETER).collect();
+        let x: Vec<&str> = l.split(DELIMETER).collect();
         if x[0] != alias {
             data = data + &l + "\n";
         } else {
@@ -122,7 +123,7 @@ pub fn ls(codex_path: &PathBuf, alias: &Option<String>, unencrypt: &bool, passwo
         println!("{0: <15} | {1: <15}", "Alias", "OTP");
     }
     for l in lines {
-        let x: Vec<&str> = l.split(config::DELIMETER).collect();
+        let x: Vec<&str> = l.split(DELIMETER).collect();
         let alias_curr = x[0];
         let unencrypt_curr = x[2];
         if alias.is_some() {
