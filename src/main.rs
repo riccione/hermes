@@ -1,5 +1,4 @@
 use clap::{Parser, Subcommand};
-//use data_encoding::BASE32;
 use std::path::{PathBuf};
 
 mod cmd;

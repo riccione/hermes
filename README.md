@@ -126,7 +126,10 @@ plain text pass `--unencrypt` or `-u`.
 <!-- ROADMAP -->
 ## Roadmap
 
+- [ ] Refactor args=clap code
+- [ ] Add locks
 - [ ] Add unit tests
+- [ ] Improve integration tests
 - [ ] Refactor code using best Rust practices
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

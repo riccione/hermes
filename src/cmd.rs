@@ -5,6 +5,28 @@ use crate::otp;
 
 const DELIMETER: &str = ":";
 
+fn input_password() -> String {
+    let password = rpassword::prompt_password("Enter password: ")
+        .expect("Failed to read password");
+    password
+}
+
+fn get(unenc: &bool, unencrypt_curr: &str, pass: &String, x: &str) -> String {
+    let code = if unencrypt_curr == "0" {
+        otp::crypt(false,
+            &x.to_string(),
+            &pass)
+    } else {
+        x.to_string()
+    };
+    let otp = if *unenc && unencrypt_curr == "0" {
+        "Cannot decrypt - provide a password".to_string()
+    } else {
+        otp::generate_otp(code.as_str())
+    };
+    otp
+}
+
 pub fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool, password: &Option<String>) {
     // make code uppercase to solve the bug #1
     let binding = code.to_uppercase();
@@ -90,22 +112,6 @@ pub fn remove(path: &PathBuf, alias: &str) -> bool {
     f
 }
 
-fn get(unenc: &bool, unencrypt_curr: &str, pass: &String, x: &str) -> String {
-    let code = if unencrypt_curr == "0" {
-        otp::crypt(false,
-            &x.to_string(),
-            &pass)
-    } else {
-        x.to_string()
-    };
-    let otp = if *unenc && unencrypt_curr == "0" {
-        "Cannot decrypt - provide a password".to_string()
-    } else {
-        otp::generate_otp(code.as_str())
-    };
-    otp
-}
-
 pub fn ls(codex_path: &PathBuf, alias: &Option<String>, unencrypt: &bool, password: &Option<String>) {
     let lines = file::read_file_to_vec(&codex_path);
     let pass: String = if *unencrypt {
@@ -138,10 +144,4 @@ pub fn ls(codex_path: &PathBuf, alias: &Option<String>, unencrypt: &bool, passwo
         }
     }
     std::process::exit(0);
-}
-
-fn input_password() -> String {
-    let password = rpassword::prompt_password("Enter password: ")
-        .expect("Failed to read password");
-    password
 }
