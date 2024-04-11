@@ -59,7 +59,7 @@ jobs:
         command: build
         args: --release --locked
     
-    # experimental part for UPX
+    # UPX for linux
     - name: run UPX on Linux
       if: matrix.os == 'ubuntu-latest'
       uses: crazy-max/ghaction-upx@v3
@@ -67,6 +67,16 @@ jobs:
         version: latest
         files: |
           target/release/hermes
+        args: --best --lzma
+
+    # experimental part for UPX
+    - name: run UPX on Windows
+      if: matrix.os == 'windows-latest'
+      uses: crazy-max/ghaction-upx@v3
+      with:
+        version: latest
+        files: |
+          target/release/hermes.exe
         args: --best --lzma
     
     - name: Upload binaries to release
