@@ -66,6 +66,12 @@ To build install Rust compiler [https://www.rust-lang.org/](https://www.rust-lan
 For tests - run:
 `cargo test -- --test-threads=1`
 
+By default, Rust's testing framework runs tests concurrently for improved performance. 
+However, this approach can sometimes cause tests to fail when they're dependent on 
+shared resources or are not designed to handle concurrent execution. 
+Currently, it seems that certain functionalities (add, update, remove) may not function correctly 
+when multiple requests are processed simultaneously.
+
 ### Installation
 
 No installation - portable, one executable file

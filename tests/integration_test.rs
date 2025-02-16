@@ -41,7 +41,7 @@ fn add_remove_code_simple() -> Result<(), Box<dyn std::error::Error>> {
         .assert()
         .success()
         .stdout(predicate::str::is_match("[0-9]{6}").expect("Regex error!"));
-
+    
     let mut cmd = Command::cargo_bin("hermes")
         .expect("binary exists");
 
@@ -63,7 +63,7 @@ fn add_remove_code_simple() -> Result<(), Box<dyn std::error::Error>> {
         .assert()
         .success()
         .stdout(predicate::str::contains(stdout_removed));
-
+    
     Ok(())
 }
 
