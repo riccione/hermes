@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 use totp_lite::{totp_custom, Sha1, DEFAULT_STEP};
-use data_encoding::BASE32;
+use data_encoding::BASE32_NOPAD;
 use magic_crypt::{new_magic_crypt, MagicCryptTrait};
 
 // Odyssea V 45
@@ -12,7 +12,7 @@ pub fn generate_otp(x: &str) -> String {
         return "Error: cannot decrypt".to_string()
     }
 
-    match BASE32.decode(x.as_bytes()) {
+    match BASE32_NOPAD.decode(x.as_bytes()) {
         Ok(x) => {
 
         let seconds: u64 = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();

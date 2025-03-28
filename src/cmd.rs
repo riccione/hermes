@@ -1,4 +1,4 @@
-use data_encoding::BASE32;
+use data_encoding::BASE32_NOPAD;
 use std::path::{PathBuf};
 use crate::file;
 use crate::otp;
@@ -51,7 +51,7 @@ pub fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool, pass
     let is_unencrypted = *unencrypt as u8;
     
     // validate code
-    match BASE32.decode(code.as_bytes()) {
+    match BASE32_NOPAD.decode(code.as_bytes()) {
         Ok(_) => (),
         Err(e) => {
             println!("Error: {e}");

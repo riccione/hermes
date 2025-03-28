@@ -52,7 +52,7 @@ It uses several crates:
 
 ### Built With
 
-* RUST 1.77
+* RUST 1.85
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -62,6 +62,9 @@ It uses several crates:
 ### Prerequisites
 
 To build install Rust compiler [https://www.rust-lang.org/](https://www.rust-lang.org/)
+
+For build - run:
+`cargo build --release`
 
 For tests - run:
 `cargo test -- --test-threads=1`
