@@ -76,9 +76,9 @@ Currently, it seems that certain functionalities (add, update, remove) may not f
 when multiple requests are processed simultaneously.
 
 ## TOTP verification
-https://authenticationtest.com/totpChallenge/ [https://authenticationtest.com/totpChallenge/](https://authenticationtest.com/totpChallenge/)
-https://www.verifyr.com/en/otp/check#totp [https://www.verifyr.com/en/otp/check#totp](https://www.verifyr.com/en/otp/check#totp)
-https://totp.danhersam.com/ [https://totp.danhersam.com/](https://totp.danhersam.com/)
+- [https://authenticationtest.com/totpChallenge/](https://authenticationtest.com/totpChallenge/)
+- [https://www.verifyr.com/en/otp/check#totp](https://www.verifyr.com/en/otp/check#totp)
+- [https://totp.danhersam.com/](https://totp.danhersam.com/)
 
 ### Installation
 
