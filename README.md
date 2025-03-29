@@ -75,6 +75,11 @@ shared resources or are not designed to handle concurrent execution.
 Currently, it seems that certain functionalities (add, update, remove) may not function correctly 
 when multiple requests are processed simultaneously.
 
+## TOTP verification
+https://authenticationtest.com/totpChallenge/ [https://authenticationtest.com/totpChallenge/](https://authenticationtest.com/totpChallenge/)
+https://www.verifyr.com/en/otp/check#totp [https://www.verifyr.com/en/otp/check#totp](https://www.verifyr.com/en/otp/check#totp)
+https://totp.danhersam.com/ [https://totp.danhersam.com/](https://totp.danhersam.com/)
+
 ### Installation
 
 No installation - portable, one executable file

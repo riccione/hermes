@@ -50,7 +50,25 @@ pub fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool, pass
     };
     let is_unencrypted = *unencrypt as u8;
     
-    // validate code
+    /* Validate code - check if it is a valid base32
+     * Here I beleive it is necessary to add some explanation for base32 and TOTP.
+     * Overtime I forgot what it does and my code comments are not good :/
+     * This is how it works:
+     * 1. user enters username and password on website
+     * 2. website asks for second factor (TOTP)
+     * 3. TOTP app generates 6-digit (usually) code based on the secret key and current time using
+     *    SHA1 (usually):
+     *   - Secret key (code) is base32 encoded
+     *   - base32 should be valid
+     *   - base32 based on RFC 4648 https://datatracker.ietf.org/doc/html/rfc4648
+     *   - it uses alphabet of 32 digits: A-Z, 2-7
+     *   - in some cases padding (=) used - the length of the string % 8 (every 5 bits to 8 bit
+     *   output)
+     *   - correct base32 encoded string should decode without errors
+     * 4. users enters the TOTP code into the website
+     * 5. website verifies the code using the same secret key and TOTP generation algorithm (SHA1)
+     * 6. success or fail
+    */
     match BASE32_NOPAD.decode(code.as_bytes()) {
         Ok(_) => (),
         Err(e) => {
