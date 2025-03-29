@@ -68,6 +68,16 @@ pub fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool, pass
      * 4. users enters the TOTP code into the website
      * 5. website verifies the code using the same secret key and TOTP generation algorithm (SHA1)
      * 6. success or fail
+     *
+     * The issue #3 was related to BASE32 method from data-encoding crate.
+     * BASE32 has auto padding
+     * BASE32_NOPAD - no padding
+     * I did test code and notice that some codes produce errors - Invalid length with BASE32,
+     * switching to BASE32_NOPAD fixed the issue.
+     * It is interesting, I tried 2 crates: base32 and data-encoding.
+     * base32 produces same results with padding set to true/false?!
+     * data-encoding - different results.
+     * I stick for now with data-encoding only because it more popular.
     */
     match BASE32_NOPAD.decode(code.as_bytes()) {
         Ok(_) => (),

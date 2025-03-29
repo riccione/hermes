@@ -6,6 +6,10 @@ use magic_crypt::{new_magic_crypt, MagicCryptTrait};
 // Odyssea V 45
 const TALARIA: &str = "immortales, aureos";
 
+/*
+ * For TOTP I currently use totp-lite.
+ * Another alternative is totp-rs.
+ */ 
 pub fn generate_otp(x: &str) -> String {
     // handles case where password cannot decrypt the code
     if x == TALARIA {
