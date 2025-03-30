@@ -82,7 +82,7 @@ pub fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool, pass
     match BASE32_NOPAD.decode(code.as_bytes()) {
         Ok(_) => (),
         Err(e) => {
-            println!("Error: {e}");
+            println!("Error data-encoding BASE32: {e}");
             std::process::exit(1);
         }
     }
