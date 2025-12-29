@@ -22,7 +22,7 @@ enum Commands {
         code: String,
         #[clap(short = 'u', long)]
         unencrypt: bool,
-        #[clap(short = 'p', long)]
+        #[clap(short = 'p', long, help = "Password (Warning: using this flag leaves password in shell history)")]
         password: Option<String>,
     },
     /// Remove code from the hermes
@@ -38,7 +38,7 @@ enum Commands {
         code: String,
         #[clap(short = 'u', long)]
         unencrypt: bool,
-        #[clap(short = 'p', long)]
+        #[clap(short = 'p', long, help = "Password (Warning: using this flag leaves password in shell history)")]
         password: Option<String>,
     },
     /// Get codes for all/alias records
@@ -47,7 +47,7 @@ enum Commands {
         alias: Option<String>,
         #[clap(short = 'u', long)]
         unencrypt: bool,
-        #[clap(short = 'p', long)]
+        #[clap(short = 'p', long, help = "Password (Warning: using this flag leaves password in shell history)")]
         password: Option<String>,
     },
     /// Show location of codex file
