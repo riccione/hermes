@@ -12,6 +12,16 @@ struct Args {
     command: Commands,
 }
 
+#[derive(clap::Args)]
+struct EncryptArgs {
+    /// WARNING: Store the secret in plain text. Use for debugging only.
+    #[clap(short = 'u', long, verbatim_doc_comment)]
+    unencrypt: bool,
+    /// WARNING: Using this flag leaves password in shell history.
+    #[clap(short = 'p', long, verbatim_doc_comment)]
+    password: Option<String>,
+}
+
 #[derive(Subcommand)]
 enum Commands {
     /// Adds code to the hermes
@@ -20,12 +30,8 @@ enum Commands {
         alias: String,
         #[clap(short = 'c', long)]
         code: String,
-        /// WARNING: Store the secret in plain text. Use for debugging only.
-        #[clap(short = 'u', long, verbatim_doc_comment)]
-        unencrypt: bool,
-        /// WARNING: Using this flag leaves password in shell history.
-        #[clap(short = 'p', long, verbatim_doc_comment)]
-        password: Option<String>,
+        #[clap(flatten)]
+        encryption: EncryptArgs,
     },
     /// Remove code from the hermes
     Remove {
@@ -38,23 +44,15 @@ enum Commands {
         alias: String,
         #[clap(short = 'c', long)]
         code: String,
-        /// WARNING: Store the secret in plain text. Use for debugging only.
-        #[clap(short = 'u', long, verbatim_doc_comment)]
-        unencrypt: bool,
-        /// WARNING: Using this flag leaves password in shell history.
-        #[clap(short = 'p', long, verbatim_doc_comment)]
-        password: Option<String>,
+        #[clap(flatten)]
+        encryption: EncryptArgs,
     },
     /// Get codes for all/alias records
     Ls {
         #[clap(short = 'a', long)]
         alias: Option<String>,
-        /// WARNING: Store the secret in plain text. Use for debugging only.
-        #[clap(short = 'u', long, verbatim_doc_comment)]
-        unencrypt: bool,
-        /// WARNING: Using this flag leaves password in shell history.
-        #[clap(short = 'p', long, verbatim_doc_comment)]
-        password: Option<String>,
+        #[clap(flatten)]
+        encryption: EncryptArgs,
     },
     /// Show location of codex file
     Config {
@@ -67,13 +65,12 @@ fn main() {
     let args = Args::parse();
     
     match &args.command {
-        Commands::Add { alias, code, unencrypt, password } => {
-            let code = code;
-            let alias = alias;
+        Commands::Add { alias, code, encryption } => {
             if !alias.contains(":") {
                 cmd::add(&codex_path, alias.as_str(), 
                     code.as_str(),
-                    &unencrypt, password);
+                    &encryption.unencrypt,
+                    &encryption.password);
             } else {
                 println!("Don't use ':' in alias or code");
                 std::process::exit(1);
@@ -82,13 +79,16 @@ fn main() {
         Commands::Remove { alias } => {
             cmd::remove(&codex_path, alias.as_str());
         },
-        Commands::Update { alias, code, unencrypt, password } => {
+        Commands::Update { alias, code, encryption } => {
             cmd::update_code(&codex_path, alias.as_str(), 
                 code.as_str(),
-                &unencrypt, password);
+                &encryption.unencrypt,
+                &encryption.password);
         },
-        Commands::Ls { alias, unencrypt, password } => {
-            cmd::ls(&codex_path, alias, unencrypt, password);
+        Commands::Ls { alias, encryption } => {
+            cmd::ls(&codex_path, alias,
+                &encryption.unencrypt,
+                &encryption.password);
         },
         Commands::Config { } => {
             if file::file_exists(&codex_path) {
