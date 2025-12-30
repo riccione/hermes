@@ -91,14 +91,10 @@ fn main() {
                 &encryption.password);
         },
         Commands::Config { } => {
-            if file::file_exists(&codex_path) {
-                let p = codex_path.into_os_string().into_string();
-                match p {
-                    Ok(x) => { println!("{x}"); },
-                    Err(e) => { println!("Error: {:?}", e); }
-                }
+            if codex_path.exists(){
+                println!("{}", codex_path.display());
             } else {
-                println!("Codex file does not exists in the default location");
+                eprintln!("Codex file does not exists at {}", codex_path.display());
             }
         }
     };
