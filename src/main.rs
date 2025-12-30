@@ -20,9 +20,11 @@ enum Commands {
         alias: String,
         #[clap(short = 'c', long)]
         code: String,
-        #[clap(short = 'u', long)]
+        /// WARNING: Store the secret in plain text. Use for debugging only.
+        #[clap(short = 'u', long, verbatim_doc_comment)]
         unencrypt: bool,
-        #[clap(short = 'p', long, help = "Password (Warning: using this flag leaves password in shell history)")]
+        /// WARNING: Using this flag leaves password in shell history.
+        #[clap(short = 'p', long, verbatim_doc_comment)]
         password: Option<String>,
     },
     /// Remove code from the hermes
@@ -36,18 +38,22 @@ enum Commands {
         alias: String,
         #[clap(short = 'c', long)]
         code: String,
-        #[clap(short = 'u', long)]
+        /// WARNING: Store the secret in plain text. Use for debugging only.
+        #[clap(short = 'u', long, verbatim_doc_comment)]
         unencrypt: bool,
-        #[clap(short = 'p', long, help = "Password (Warning: using this flag leaves password in shell history)")]
+        /// WARNING: Using this flag leaves password in shell history.
+        #[clap(short = 'p', long, verbatim_doc_comment)]
         password: Option<String>,
     },
     /// Get codes for all/alias records
     Ls {
         #[clap(short = 'a', long)]
         alias: Option<String>,
-        #[clap(short = 'u', long)]
+        /// WARNING: Store the secret in plain text. Use for debugging only.
+        #[clap(short = 'u', long, verbatim_doc_comment)]
         unencrypt: bool,
-        #[clap(short = 'p', long, help = "Password (Warning: using this flag leaves password in shell history)")]
+        /// WARNING: Using this flag leaves password in shell history.
+        #[clap(short = 'p', long, verbatim_doc_comment)]
         password: Option<String>,
     },
     /// Show location of codex file
