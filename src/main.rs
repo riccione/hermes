@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use std::path::{PathBuf};
+use std::path::PathBuf;
 
 mod cmd;
 mod file;
@@ -55,43 +55,59 @@ enum Commands {
         encryption: EncryptArgs,
     },
     /// Show location of codex file
-    Config {
-    },
+    Config {},
 }
 
 fn main() {
     let codex_path: PathBuf = file::get_codex_path();
 
     let args = Args::parse();
-    
+
     match &args.command {
-        Commands::Add { alias, code, encryption } => {
+        Commands::Add {
+            alias,
+            code,
+            encryption,
+        } => {
             if !alias.contains(":") {
-                cmd::add(&codex_path, alias.as_str(), 
+                cmd::add(
+                    &codex_path,
+                    alias.as_str(),
                     code.as_str(),
                     &encryption.unencrypt,
-                    &encryption.password);
+                    &encryption.password,
+                );
             } else {
                 println!("Don't use ':' in alias or code");
                 std::process::exit(1);
             }
-        },
+        }
         Commands::Remove { alias } => {
             cmd::remove(&codex_path, alias.as_str());
-        },
-        Commands::Update { alias, code, encryption } => {
-            cmd::update_code(&codex_path, alias.as_str(), 
+        }
+        Commands::Update {
+            alias,
+            code,
+            encryption,
+        } => {
+            cmd::update_code(
+                &codex_path,
+                alias.as_str(),
                 code.as_str(),
                 &encryption.unencrypt,
-                &encryption.password);
-        },
+                &encryption.password,
+            );
+        }
         Commands::Ls { alias, encryption } => {
-            cmd::ls(&codex_path, alias,
+            cmd::ls(
+                &codex_path,
+                alias,
                 &encryption.unencrypt,
-                &encryption.password);
-        },
-        Commands::Config { } => {
-            if codex_path.exists(){
+                &encryption.password,
+            );
+        }
+        Commands::Config {} => {
+            if codex_path.exists() {
                 println!("{}", codex_path.display());
             } else {
                 eprintln!("Codex file does not exists at {}", codex_path.display());

@@ -1,21 +1,25 @@
-use data_encoding::BASE32_NOPAD;
-use std::path::{PathBuf};
 use crate::file;
 use crate::otp;
+use data_encoding::BASE32_NOPAD;
+use std::path::PathBuf;
 
 const DELIMETER: &str = ":";
 
 fn input_password() -> String {
-    let password = rpassword::prompt_password("Enter password: ")
-        .expect("Failed to read password");
+    let password = rpassword::prompt_password("Enter password: ").expect("Failed to read password");
     password
+}
+
+fn get_effective_password(password: &Option<String>) -> String {
+    password
+        .clone()
+        .or_else(|| std::env::var("HERMES_PASSWORD").ok())
+        .unwrap_or_else(input_password)
 }
 
 fn get(unenc: &bool, unencrypt_curr: &str, pass: &String, x: &str) -> String {
     let code = if unencrypt_curr == "0" {
-        otp::crypt(false,
-            &x.to_string(),
-            &pass)
+        otp::crypt(false, &x.to_string(), &pass)
     } else {
         x.to_string()
     };
@@ -27,29 +31,26 @@ fn get(unenc: &bool, unencrypt_curr: &str, pass: &String, x: &str) -> String {
     otp
 }
 
-pub fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool, password: &Option<String>) {
+pub fn add(
+    codex_path: &PathBuf,
+    alias: &str,
+    code: &str,
+    unencrypt: &bool,
+    password: &Option<String>,
+) {
     // make code uppercase to solve the bug #1
     let binding = code.to_uppercase();
     let code = binding.as_str();
 
     // create a storage file if it does not exist
-    let code_encrypted = if *unencrypt { 
+    let code_encrypted = if *unencrypt {
         code.to_string()
     } else {
-
-        match password {
-            Some(p) => {
-                otp::crypt(true, &code.to_string(), p)
-            },
-            _ => {
-                otp::crypt(true, 
-                    &code.to_string(), 
-                    &input_password())
-            }
-        }
+        let pass = get_effective_password(password);
+        otp::crypt(true, &code.to_string(), &pass)
     };
     let is_unencrypted = *unencrypt as u8;
-    
+
     /* Validate code - check if it is a valid base32
      * Here I beleive it is necessary to add some explanation for base32 and TOTP.
      * Overtime I forgot what it does and my code comments are not good :/
@@ -78,7 +79,7 @@ pub fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool, pass
      * base32 produces same results with padding set to true/false?!
      * data-encoding - different results.
      * I stick for now with data-encoding only because it more popular.
-    */
+     */
     match BASE32_NOPAD.decode(code.as_bytes()) {
         Ok(_) => (),
         Err(e) => {
@@ -86,15 +87,11 @@ pub fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool, pass
             std::process::exit(1);
         }
     }
-    
+
     // sha for the future use
     let sha = "sha1";
-    let data = format!("{}:{}:{}:{}\n", 
-        alias,
-        code_encrypted,
-        is_unencrypted,
-        sha);
-    
+    let data = format!("{}:{}:{}:{}\n", alias, code_encrypted, is_unencrypted, sha);
+
     if file::file_exists(codex_path) {
         // check if alias already exists and return error message
         if file::alias_exists(&alias, &codex_path) == true {
@@ -112,8 +109,13 @@ pub fn add(codex_path: &PathBuf, alias: &str, code: &str, unencrypt: &bool, pass
     println!("{otp}");
 }
 
-pub fn update_code(codex_path: &PathBuf, alias: &str, code: &str, unenc: &bool, 
-    password: &Option<String>) {
+pub fn update_code(
+    codex_path: &PathBuf,
+    alias: &str,
+    code: &str,
+    unenc: &bool,
+    password: &Option<String>,
+) {
     if remove(&codex_path, &alias) {
         add(&codex_path, &alias, &code, &unenc, &password);
     } else {
@@ -140,15 +142,17 @@ pub fn remove(path: &PathBuf, alias: &str) -> bool {
     f
 }
 
-pub fn ls(codex_path: &PathBuf, alias: &Option<String>, unencrypt: &bool, password: &Option<String>) {
+pub fn ls(
+    codex_path: &PathBuf,
+    alias: &Option<String>,
+    unencrypt: &bool,
+    password: &Option<String>,
+) {
     let lines = file::read_file_to_vec(&codex_path);
     let pass: String = if *unencrypt {
         "".to_string()
     } else {
-        match password {
-            Some(p) => p.to_string(),
-            _ => input_password()
-        }
+        get_effective_password(password)
     };
     if alias.is_none() {
         println!("{0: <15} | {1: <15}", "Alias", "OTP");
