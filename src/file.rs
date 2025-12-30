@@ -1,21 +1,22 @@
-use std::path::{Path, PathBuf};
+use dirs;
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Write};
-use dirs;
+use std::path::{Path, PathBuf};
 
 const FILE_CODEX: &str = "codex";
 const PROJECT: &str = "hermes";
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where P: AsRef<Path>, {
+where
+    P: AsRef<Path>,
+{
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
 }
 
 pub fn get_codex_path() -> PathBuf {
     // using dirs fn to get location of config directory
-    let mut codex_path = dirs::config_dir()
-        .expect("Failed to get config path");
+    let mut codex_path = dirs::config_dir().expect("Failed to get config path");
     codex_path.push(PROJECT);
     codex_path.push(FILE_CODEX);
     codex_path
@@ -27,16 +28,17 @@ pub fn file_exists(path: &PathBuf) -> bool {
 
 pub fn read_file_to_vec(path: &PathBuf) -> Vec<String> {
     if file_exists(path) {
-        let file = File::open(path)
-            .expect("There is no codex file");
+        let file = File::open(path).expect("There is no codex file");
         let file = BufReader::new(file);
         file.lines()
             .map(|x| x.expect("Could not parse line"))
             .collect()
     } else {
-        println!("{FILE_CODEX} file does not exist.\n\
+        println!(
+            "{FILE_CODEX} file does not exist.\n\
             Please use hermes add command\n\
-            or copy existing {FILE_CODEX} to a default location");
+            or copy existing {FILE_CODEX} to a default location"
+        );
         std::process::exit(1);
     }
 }
