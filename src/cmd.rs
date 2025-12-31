@@ -2,8 +2,18 @@ use crate::file;
 use crate::otp;
 use data_encoding::BASE32_NOPAD;
 use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
 
 const DELIMETER: &str = ":";
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Record {
+    pub alias: String,
+    pub secret: String,
+    pub is_unencrypted: bool, // only for DEBUG, store secret unencrypted
+    pub algorithm: String,
+    pub created_at: u64, // Unix timestamp in sec
+}
 
 fn input_password() -> String {
     let password = rpassword::prompt_password("Enter password: ").expect("Failed to read password");
