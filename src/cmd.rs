@@ -171,28 +171,42 @@ pub fn ls(
         std::process::exit(1);
     });
 
-    let pass = if *unencrypt { String::new() } else { get_effective_password(password) };
+    let records: Vec<Record> = lines.iter()
+        .filter_map(|l| Record::from_line(l))
+        .collect();
+
+    let filtered_records: Vec<&Record> = records.iter()
+        .filter(|r| match alias_filter {
+            Some(f) => f == &r.alias,
+            None => true,
+        })
+        .collect();
+
+    if filtered_records.is_empty() {
+        if alias_filter.is_some() {
+            println!("Alias not found.");
+        }
+        return;
+    }
+
+    let needs_password = !*unencrypt && filtered_records.iter().any(|r| !r.is_unencrypted);
+
+    let pass = if needs_password {
+        get_effective_password(password)
+    } else {
+        String::new()
+    };
 
     if alias_filter.is_none() {
         println!("{0: <15} | {1: <15}", "Alias", "OTP");
     }
 
-    for l in lines {
-        if let Some(record) = Record::from_line(&l) {
-            let matches_filter = match alias_filter {
-                Some(f) => f == &record.alias,
-                None => true,
-            };
-
-            if matches_filter {
-                let otp = get(unencrypt, &record, &pass);
-                if alias_filter.is_some() {
-                    println!("{otp}");
-                    return;
-                } else {
-                    println!("{0: <15} | {1: <15}", record.alias, otp);
-                }
-            }
+    for record in filtered_records {
+        let otp = get(unencrypt, record, &pass);
+        if alias_filter.is_some() {
+            println!("{otp}");
+        } else {
+            println!("{0: <15} | {1: <15}", record.alias, otp);
         }
     }
 }
