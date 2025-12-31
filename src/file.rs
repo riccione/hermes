@@ -1,6 +1,6 @@
 use dirs;
 use std::fs::{File, OpenOptions};
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
 
 const FILE_CODEX: &str = "codex";
@@ -26,42 +26,27 @@ pub fn file_exists(path: &PathBuf) -> bool {
     Path::new(&path).exists()
 }
 
-pub fn read_file_to_vec(path: &PathBuf) -> Vec<String> {
-    if file_exists(path) {
-        let file = File::open(path).expect("There is no codex file");
-        let file = BufReader::new(file);
-        file.lines()
-            .map(|x| x.expect("Could not parse line"))
-            .collect()
-    } else {
-        println!(
-            "{FILE_CODEX} file does not exist.\n\
-            Please use hermes add command\n\
-            or copy existing {FILE_CODEX} to a default location"
-        );
-        std::process::exit(1);
-    }
+pub fn read_file_to_vec(path: &PathBuf) -> io::Result<Vec<String>> {
+    read_lines(path).map_err(|_| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Codex file not found at {:?}. Use 'add' to create it.", path)
+        )
+    })?
+    .collect()
 }
 
-pub fn write(path: &PathBuf, data: &str) {
+pub fn write(path: &PathBuf, data: &str) -> io::Result<()> {
     let mut data_file = OpenOptions::new()
         .append(true)
-        .open(path)
-        .expect("Cannot open file");
-    data_file
-        .write(data.as_bytes())
-        .expect("Failed to write codex file");
+        .open(path)?;
+    writeln!(data_file, "{}", data.trim())
 }
 
-pub fn write_to_file(path: &PathBuf, data: &str, msg: &str) {
-    match std::fs::write(path, data) {
-        Ok(_) => {
-            println!("{msg}");
-        }
-        Err(e) => {
-            eprintln!("Failed to save codex. Error: {e}");
-        }
-    }
+pub fn write_to_file(path: &PathBuf, data: &str, msg: &str) -> io::Result<()> {
+    std::fs::write(path, data)?;
+    println!("{msg}");
+    Ok(())
 }
 
 pub fn alias_exists(alias: &str, codex_path: &PathBuf) -> bool {
@@ -79,11 +64,8 @@ pub fn alias_exists(alias: &str, codex_path: &PathBuf) -> bool {
     false
 }
 
-pub fn create_path(path: &PathBuf) -> bool {
-    let mut p: PathBuf = path.to_path_buf();
+pub fn create_path(path: &PathBuf) -> io::Result<()> {
+    let mut p = path.clone();
     p.pop();
-    match std::fs::create_dir_all(&p) {
-        Ok(_) => true,
-        Err(_e) => false,
-    }
+    std::fs::create_dir_all(p)
 }
