@@ -2,6 +2,7 @@ use crate::file;
 use crate::otp;
 use data_encoding::BASE32_NOPAD;
 use std::path::PathBuf;
+use std::io;
 use crate::models::Record;
 
 fn input_password() -> String {
@@ -209,4 +210,38 @@ pub fn ls(
             println!("{0: <15} | {1: <15}", record.alias, otp);
         }
     }
+}
+
+pub fn migrate(path: &PathBuf) -> io::Result<()> {
+    // check if file exists
+    if !path.exists() {
+        return Err(io::Error::new(io::ErrorKind::NotFound, "No codex file found to migrate."));
+    }
+
+    // create a backup
+    let mut backup_path = path.clone();
+    backup_path.set_extension("bak");
+    std::fs::copy(path, &backup_path)?;
+    println!("Backup created at {:?}", backup_path);
+
+    // read and parse everything using the hybrid parser
+    let lines = file::read_file_to_vec(path)?;
+    let mut migrated_records = Vec::new();
+    let mut count = 0;
+
+    for line in lines {
+        if let Some(record) = Record::from_line(&line) {
+            // re-serialize to JSON string
+            let json = serde_json::to_string(&record).expect("Failed to serialize");
+            migrated_records.push(json);
+            count += 1;
+        }
+    }
+
+    // write back to the original file
+    let new_content = migrated_records.join("\n") + "\n";
+    file::write_to_file(path, &new_content, "Migration data prepared.")?;
+
+    println!("Successfully migrated {count} records to JSON format.");
+    Ok(())
 }
