@@ -112,14 +112,34 @@ pub fn add(
 pub fn update_code(
     codex_path: &PathBuf,
     alias: &str,
-    code: &str,
+    new_code: &str,
     unenc: &bool,
     password: &Option<String>,
 ) {
-    if remove(&codex_path, &alias) {
-        add(&codex_path, &alias, &code, &unenc, &password);
+    // Validate the NEW code first (Fail fast)
+    let sanitized_code = new_code.to_uppercase().replace("=", "");
+    if let Err(e) = BASE32_NOPAD.decode(sanitized_code.as_bytes()) {
+        eprintln!("Error: Invalid Base32 code provided. Update aborted. ({e})");
+        return;
+    }
+
+    // Check if the alias even exists before we do anything else
+    if !file::alias_exists(alias, codex_path) {
+        eprintln!("No record for '{alias}' has been located in the codex file.");
+        return;
+    }
+    
+    // Resolve password once (if needed)
+    let effective_pass = if *unenc {
+        None
     } else {
-        println!("No record for {alias} has been located in the codex file");
+        Some(get_effective_password(password))
+    };
+    
+    // Do the swap
+    if remove(codex_path, alias) {
+        add(codex_path, alias, &sanitized_code, unenc, &effective_pass);
+        println!("Record for '{alias}' successfully updated.");
     }
 }
 
