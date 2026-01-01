@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 mod cmd;
 mod file;
+mod models;
 mod otp;
 
 #[derive(Parser)]
@@ -56,6 +57,8 @@ enum Commands {
     },
     /// Show location of codex file
     Config {},
+    /// Migrate legacy codex format to JSON
+    Migrate,
 }
 
 fn main() {
@@ -111,6 +114,12 @@ fn main() {
                 println!("{}", codex_path.display());
             } else {
                 eprintln!("Codex file does not exists at {}", codex_path.display());
+            }
+        }
+        Commands::Migrate => {
+            if let Err(e) = cmd::migrate(&codex_path) {
+                eprintln!("Migration failed: {e}");
+                std::process::exit(1);
             }
         }
     };

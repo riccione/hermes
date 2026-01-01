@@ -1,9 +1,9 @@
 use crate::file;
+use crate::models::Record;
 use crate::otp;
 use data_encoding::BASE32_NOPAD;
+use std::io;
 use std::path::PathBuf;
-
-const DELIMETER: &str = ":";
 
 fn input_password() -> String {
     let password = rpassword::prompt_password("Enter password: ").expect("Failed to read password");
@@ -17,18 +17,18 @@ fn get_effective_password(password: &Option<String>) -> String {
         .unwrap_or_else(input_password)
 }
 
-fn get(unenc: &bool, unencrypt_curr: &str, pass: &String, x: &str) -> String {
-    let code = if unencrypt_curr == "0" {
-        otp::crypt(false, &x.to_string(), &pass)
+fn get(unenc: &bool, record: &Record, pass: &String) -> String {
+    let code = if !record.is_unencrypted {
+        otp::crypt(false, &record.secret, pass)
     } else {
-        x.to_string()
+        record.secret.clone()
     };
-    let otp = if *unenc && unencrypt_curr == "0" {
+
+    if *unenc && !record.is_unencrypted {
         "Cannot decrypt - provide a password".to_string()
     } else {
         otp::generate_otp(code.as_str())
-    };
-    otp
+    }
 }
 
 pub fn add(
@@ -39,17 +39,16 @@ pub fn add(
     password: &Option<String>,
 ) {
     // make code uppercase to solve the bug #1
-    let binding = code.to_uppercase();
-    let code = binding.as_str();
+    let binding = code.to_uppercase().replace("=", "");
+    let clean_code = binding.as_str();
 
     // create a storage file if it does not exist
-    let code_encrypted = if *unencrypt {
-        code.to_string()
+    let secret = if *unencrypt {
+        clean_code.to_string()
     } else {
         let pass = get_effective_password(password);
-        otp::crypt(true, &code.to_string(), &pass)
+        otp::crypt(true, &clean_code.to_string(), &pass)
     };
-    let is_unencrypted = *unencrypt as u8;
 
     /* Validate code - check if it is a valid base32
      * Here I beleive it is necessary to add some explanation for base32 and TOTP.
@@ -80,31 +79,27 @@ pub fn add(
      * data-encoding - different results.
      * I stick for now with data-encoding only because it more popular.
      */
-    match BASE32_NOPAD.decode(code.as_bytes()) {
-        Ok(_) => (),
-        Err(e) => {
-            println!("Error data-encoding BASE32: {e}");
-            std::process::exit(1);
-        }
+    if let Err(e) = BASE32_NOPAD.decode(clean_code.as_bytes()) {
+        eprintln!("Error data-encoding BASE32: {e}");
+        std::process::exit(1);
     }
 
-    // sha for the future use
-    let sha = "sha1";
-    let data = format!("{}:{}:{}:{}\n", alias, code_encrypted, is_unencrypted, sha);
+    // create Record Obj
+    let record = Record::new(alias.to_string(), secret.to_string(), *unencrypt);
+    let json_data = serde_json::to_string(&record).expect("Failed to serialize record");
 
     if file::file_exists(codex_path) {
-        // check if alias already exists and return error message
-        if file::alias_exists(&alias, &codex_path) == true {
+        if file::alias_exists(alias, codex_path) {
             eprintln!("Alias already exists, please select another one");
             std::process::exit(1);
         }
-        file::write(codex_path, &data);
+        file::write(codex_path, &json_data).expect("Failed to append record");
     } else {
-        if file::create_path(codex_path) {
-            let msg = "Record saved to codex";
-            file::write_to_file(codex_path, &data, &msg);
-        }
+        file::create_path(codex_path).expect("Failed to create path");
+        file::write_to_file(codex_path, &json_data, "Record saved to codex")
+            .expect("Failed to save codex");
     }
+
     let otp = otp::generate_otp(code);
     println!("{otp}");
 }
@@ -128,14 +123,14 @@ pub fn update_code(
         eprintln!("No record for '{alias}' has been located in the codex file.");
         return;
     }
-    
+
     // Resolve password once (if needed)
     let effective_pass = if *unenc {
         None
     } else {
         Some(get_effective_password(password))
     };
-    
+
     // Do the swap
     if remove(codex_path, alias) {
         add(codex_path, alias, &sanitized_code, unenc, &effective_pass);
@@ -144,53 +139,102 @@ pub fn update_code(
 }
 
 pub fn remove(path: &PathBuf, alias: &str) -> bool {
-    let lines = file::read_file_to_vec(&path);
-    let mut data = "".to_owned();
-    let mut f: bool = false;
+    let lines = file::read_file_to_vec(&path).unwrap_or_default();
+    let mut new_lines: Vec<String> = Vec::new();
+    let mut found: bool = false;
+
     for l in lines {
-        let x: Vec<&str> = l.split(DELIMETER).collect();
-        if x[0] != alias {
-            data = data + &l + "\n";
-        } else {
-            f = true;
+        // hybrid parser from Record struct
+        if let Some(record) = Record::from_line(&l) {
+            if record.alias == alias {
+                found = true;
+                continue; // Skip this one
+            }
         }
+        new_lines.push(l);
     }
-    if f {
-        let msg = format!("Record for {alias} has been removed from codex");
-        file::write_to_file(path, &data, &msg);
+
+    if found {
+        let data = new_lines.join("\n") + "\n";
+        file::write_to_file(path, &data, "Record removed").expect("Failed to update codex");
+        println!("Record for {alias} removed.");
     }
-    f
+    found
 }
 
 pub fn ls(
     codex_path: &PathBuf,
-    alias: &Option<String>,
+    alias_filter: &Option<String>,
     unencrypt: &bool,
     password: &Option<String>,
 ) {
-    let lines = file::read_file_to_vec(&codex_path);
-    let pass: String = if *unencrypt {
-        "".to_string()
-    } else {
+    let lines = file::read_file_to_vec(codex_path).unwrap_or_else(|_| {
+        eprintln!("Codex not found.");
+        std::process::exit(1);
+    });
+
+    let records: Vec<Record> = lines.iter().filter_map(|l| Record::from_line(l)).collect();
+
+    let filtered_records: Vec<&Record> = records
+        .iter()
+        .filter(|r| match alias_filter {
+            Some(f) => f == &r.alias,
+            None => true,
+        })
+        .collect();
+
+    if filtered_records.is_empty() {
+        if alias_filter.is_some() {
+            println!("Alias not found.");
+        }
+        return;
+    }
+
+    let needs_password = !*unencrypt && filtered_records.iter().any(|r| !r.is_unencrypted);
+
+    let pass = if needs_password {
         get_effective_password(password)
+    } else {
+        String::new()
     };
-    if alias.is_none() {
+
+    if alias_filter.is_none() {
         println!("{0: <15} | {1: <15}", "Alias", "OTP");
     }
-    for l in lines {
-        let x: Vec<&str> = l.split(DELIMETER).collect();
-        let alias_curr = x[0];
-        let unencrypt_curr = x[2];
-        if alias.is_some() {
-            if alias.as_ref().unwrap() == alias_curr {
-                let otp = get(&unencrypt, &unencrypt_curr, &pass, &x[1]);
-                println!("{otp}");
-                break;
-            }
+
+    for record in filtered_records {
+        let otp = get(unencrypt, record, &pass);
+        if alias_filter.is_some() {
+            println!("{otp}");
         } else {
-            let otp = get(&unencrypt, &unencrypt_curr, &pass, &x[1]);
-            println!("{0: <15} | {1: <15}", alias_curr, otp);
+            println!("{0: <15} | {1: <15}", record.alias, otp);
         }
     }
-    std::process::exit(0);
+}
+
+pub fn migrate(path: &PathBuf) -> io::Result<()> {
+    // create backup
+    let backup_path = file::create_backup(path)?;
+    println!("Backup created at {:?}", backup_path);
+
+    // read and parse everything using the hybrid parser
+    let lines = file::read_file_to_vec(path)?;
+    let mut migrated_records = Vec::new();
+    let mut count = 0;
+
+    for line in lines {
+        if let Some(record) = Record::from_line(&line) {
+            // re-serialize to JSON string
+            let json = serde_json::to_string(&record).expect("Failed to serialize");
+            migrated_records.push(json);
+            count += 1;
+        }
+    }
+
+    // write back to the original file
+    let new_content = migrated_records.join("\n") + "\n";
+    file::write_to_file(path, &new_content, "Migration data prepared.")?;
+
+    println!("Successfully migrated {count} records to JSON format.");
+    Ok(())
 }
