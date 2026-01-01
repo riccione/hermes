@@ -1,9 +1,9 @@
 use crate::file;
+use crate::models::Record;
 use crate::otp;
 use data_encoding::BASE32_NOPAD;
-use std::path::PathBuf;
 use std::io;
-use crate::models::Record;
+use std::path::PathBuf;
 
 fn input_password() -> String {
     let password = rpassword::prompt_password("Enter password: ").expect("Failed to read password");
@@ -96,9 +96,10 @@ pub fn add(
         file::write(codex_path, &json_data).expect("Failed to append record");
     } else {
         file::create_path(codex_path).expect("Failed to create path");
-        file::write_to_file(codex_path, &json_data, "Record saved to codex").expect("Failed to save codex");
+        file::write_to_file(codex_path, &json_data, "Record saved to codex")
+            .expect("Failed to save codex");
     }
-    
+
     let otp = otp::generate_otp(code);
     println!("{otp}");
 }
@@ -122,14 +123,14 @@ pub fn update_code(
         eprintln!("No record for '{alias}' has been located in the codex file.");
         return;
     }
-    
+
     // Resolve password once (if needed)
     let effective_pass = if *unenc {
         None
     } else {
         Some(get_effective_password(password))
     };
-    
+
     // Do the swap
     if remove(codex_path, alias) {
         add(codex_path, alias, &sanitized_code, unenc, &effective_pass);
@@ -172,11 +173,10 @@ pub fn ls(
         std::process::exit(1);
     });
 
-    let records: Vec<Record> = lines.iter()
-        .filter_map(|l| Record::from_line(l))
-        .collect();
+    let records: Vec<Record> = lines.iter().filter_map(|l| Record::from_line(l)).collect();
 
-    let filtered_records: Vec<&Record> = records.iter()
+    let filtered_records: Vec<&Record> = records
+        .iter()
         .filter(|r| match alias_filter {
             Some(f) => f == &r.alias,
             None => true,

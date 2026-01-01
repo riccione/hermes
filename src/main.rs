@@ -2,8 +2,8 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 mod cmd;
-mod models;
 mod file;
+mod models;
 mod otp;
 
 #[derive(Parser)]

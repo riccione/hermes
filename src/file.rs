@@ -28,19 +28,21 @@ pub fn file_exists(path: &PathBuf) -> bool {
 }
 
 pub fn read_file_to_vec(path: &PathBuf) -> io::Result<Vec<String>> {
-    read_lines(path).map_err(|_| {
-        io::Error::new(
-            io::ErrorKind::NotFound,
-            format!("Codex file not found at {:?}. Use 'add' to create it.", path)
-        )
-    })?
-    .collect()
+    read_lines(path)
+        .map_err(|_| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                format!(
+                    "Codex file not found at {:?}. Use 'add' to create it.",
+                    path
+                ),
+            )
+        })?
+        .collect()
 }
 
 pub fn write(path: &PathBuf, data: &str) -> io::Result<()> {
-    let mut data_file = OpenOptions::new()
-        .append(true)
-        .open(path)?;
+    let mut data_file = OpenOptions::new().append(true).open(path)?;
     writeln!(data_file, "{}", data.trim())
 }
 
@@ -71,12 +73,13 @@ pub fn create_path(path: &PathBuf) -> io::Result<()> {
     std::fs::create_dir_all(p)
 }
 
-pub fn create_backup(path: &PathBuf) -> io::Result<(PathBuf)> {
+pub fn create_backup(path: &PathBuf) -> io::Result<PathBuf> {
     // check if file exists
     if !path.exists() {
         return Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                "No codex file found to migrate."));
+            io::ErrorKind::NotFound,
+            "No codex file found to migrate.",
+        ));
     }
 
     // get current timestamp
