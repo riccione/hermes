@@ -2,6 +2,7 @@ use dirs;
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 const FILE_CODEX: &str = "codex";
 const PROJECT: &str = "hermes";
@@ -68,4 +69,29 @@ pub fn create_path(path: &PathBuf) -> io::Result<()> {
     let mut p = path.clone();
     p.pop();
     std::fs::create_dir_all(p)
+}
+
+pub fn create_backup(path: &PathBuf) -> io::Result<(PathBuf)> {
+    // check if file exists
+    if !path.exists() {
+        return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "No codex file found to migrate."));
+    }
+
+    // get current timestamp
+    let start = SystemTime::now();
+    let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs();
+
+    let mut backup_path = path.clone();
+
+    // creates filename like: codex.1700000000.bak
+    let new_extension = format!("{}.bak", since_the_epoch);
+    backup_path.set_extension(new_extension);
+
+    std::fs::copy(path, &backup_path)?;
+    Ok(backup_path)
 }

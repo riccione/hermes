@@ -213,15 +213,8 @@ pub fn ls(
 }
 
 pub fn migrate(path: &PathBuf) -> io::Result<()> {
-    // check if file exists
-    if !path.exists() {
-        return Err(io::Error::new(io::ErrorKind::NotFound, "No codex file found to migrate."));
-    }
-
-    // create a backup
-    let mut backup_path = path.clone();
-    backup_path.set_extension("bak");
-    std::fs::copy(path, &backup_path)?;
+    // create backup
+    let backup_path = file::create_backup(path)?;
     println!("Backup created at {:?}", backup_path);
 
     // read and parse everything using the hybrid parser
