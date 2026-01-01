@@ -63,30 +63,38 @@ enum Commands {
 
 fn main() {
     let codex_path: PathBuf = file::get_codex_path();
-
     let args = Args::parse();
 
+    if let Err(e) = run(args, codex_path) {
+        eprintln!("Error: {e}");
+        std::process::exit(1);
+    }
+}
+
+fn run(args: Args, codex_path: PathBuf) -> Result<(), String> {
     match &args.command {
         Commands::Add {
             alias,
             code,
             encryption,
         } => {
-            if !alias.contains(":") {
-                cmd::add(
-                    &codex_path,
-                    alias.as_str(),
-                    code.as_str(),
-                    &encryption.unencrypt,
-                    &encryption.password,
-                );
-            } else {
-                println!("Don't use ':' in alias or code");
+            if alias.contains(":") {
+                eprintln!("Error: Don't use ':' in alias.");
                 std::process::exit(1);
             }
+
+            cmd::add(
+                &codex_path,
+                alias.as_str(),
+                code.as_str(),
+                &encryption.unencrypt,
+                &encryption.password,
+            );
         }
         Commands::Remove { alias } => {
-            cmd::remove(&codex_path, alias.as_str());
+            if !cmd::remove(&codex_path, alias.as_str()) {
+                eprintln!("Error: Could not find alias '{}'", alias);
+            }
         }
         Commands::Update {
             alias,
@@ -122,5 +130,6 @@ fn main() {
                 std::process::exit(1);
             }
         }
-    };
+    }
+    Ok(())
 }
