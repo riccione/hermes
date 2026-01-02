@@ -73,28 +73,32 @@ pub fn create_path(path: &PathBuf) -> io::Result<()> {
     std::fs::create_dir_all(p)
 }
 
-pub fn create_backup(path: &PathBuf) -> io::Result<PathBuf> {
-    // check if file exists
+fn perform_backup(path: &PathBuf, extension: String) -> io::Result<PathBuf> {
     if !path.exists() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
-            "No codex file found to migrate.",
+            "Error: No Codex file found to backup.",
         ));
     }
 
-    // get current timestamp
-    let start = SystemTime::now();
-    let since_the_epoch = start
+    let mut backup_path = path.clone();
+    backup_path.set_extension(extension);
+
+    std::fs::copy(path, &backup_path)?;
+    Ok(backup_path)
+}
+
+// routine backups for add and remove cmd
+pub fn create_routine_backup(path: &PathBuf) -> io::Result<PathBuf> {
+    perform_backup(path, "bak".to_string())
+}
+
+// backup for migration with UNIX timestamp
+pub fn create_snapshot_backup(path: &PathBuf) -> io::Result<PathBuf> {
+    let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
         .as_secs();
 
-    let mut backup_path = path.clone();
-
-    // creates filename like: codex.1700000000.bak
-    let new_extension = format!("{}.bak", since_the_epoch);
-    backup_path.set_extension(new_extension);
-
-    std::fs::copy(path, &backup_path)?;
-    Ok(backup_path)
+    perform_backup(path, format!("{}.bak", timestamp))
 }
