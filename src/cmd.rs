@@ -1,3 +1,4 @@
+use crate::args::OutputFormat;
 use crate::file;
 use crate::models::Record;
 use crate::otp;
@@ -179,6 +180,7 @@ pub fn ls(
     alias_filter: &Option<String>,
     unencrypt: &bool,
     password: &Option<String>,
+    format: &OutputFormat,
 ) {
     let lines = file::read_file_to_vec(codex_path).unwrap_or_else(|_| {
         eprintln!("Codex not found.");
@@ -214,12 +216,41 @@ pub fn ls(
         println!("{0: <15} | {1: <15}", "Alias", "OTP");
     }
 
+    let mut output_data = Vec::new();
     for record in filtered_records {
         let otp = get(unencrypt, record, &pass);
-        if alias_filter.is_some() {
-            println!("{otp}");
-        } else {
-            println!("{0: <15} | {1: <15}", record.alias, otp);
+        output_data.push((record, otp));
+    }
+
+    // handle output based on format
+    match format {
+        OutputFormat::Json => {
+            let json_list: Vec<serde_json::Value> = output_data
+                .iter()
+                .map(|(r, otp)| {
+                    serde_json::json!({
+                        "alias": r.alias,
+                        "otp": otp,
+                        "is_encrypted": !r.is_unencrypted,
+                        "created_at": r.created_at
+                    })
+                })
+                .collect();
+            println!("{}", serde_json::to_string_pretty(&json_list).unwrap());
+        }
+        OutputFormat::Table => {
+            if let Some(_alias) = alias_filter {
+                // if specific alias requested, print only the OTP raw
+                if let Some((_, otp)) = output_data.first() {
+                    println!("{otp}");
+                }
+            } else {
+                // print the full table
+                println!("{0: <15} | {1: <15}", "Alias", "OTP");
+                for (record, otp) in output_data {
+                    println!("{0: <15} | {1: <15}", record.alias, otp);
+                }
+            }
         }
     }
 }

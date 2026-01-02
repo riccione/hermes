@@ -1,10 +1,13 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
+mod args;
 mod cmd;
 mod file;
 mod models;
 mod otp;
+
+use crate::args::OutputFormat;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)] // Read from Cargo.toml
@@ -52,6 +55,8 @@ enum Commands {
     Ls {
         #[clap(short = 'a', long)]
         alias: Option<String>,
+        #[arg(short = 'f', long, value_enum, default_value_t = OutputFormat::Table)]
+        format: OutputFormat,
         #[clap(flatten)]
         encryption: EncryptArgs,
     },
@@ -109,12 +114,17 @@ fn run(args: Args, codex_path: PathBuf) -> Result<(), String> {
                 &encryption.password,
             );
         }
-        Commands::Ls { alias, encryption } => {
+        Commands::Ls {
+            alias,
+            format,
+            encryption,
+        } => {
             cmd::ls(
                 &codex_path,
                 alias,
                 &encryption.unencrypt,
                 &encryption.password,
+                format,
             );
         }
         Commands::Config {} => {
