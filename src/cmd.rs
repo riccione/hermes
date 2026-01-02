@@ -89,10 +89,17 @@ pub fn add(
     let json_data = serde_json::to_string(&record).expect("Failed to serialize record");
 
     if file::file_exists(codex_path) {
+        // check for duplicates
         if file::alias_exists(alias, codex_path) {
             eprintln!("Alias already exists, please select another one");
             std::process::exit(1);
         }
+
+        // create backup
+        if let Err(e) = file::create_routine_backup(codex_path) {
+            eprintln!("Warning: Could not create backup file: {e}");
+        }
+
         file::write(codex_path, &json_data).expect("Failed to append record");
     } else {
         file::create_path(codex_path).expect("Failed to create path");
@@ -139,6 +146,11 @@ pub fn update_code(
 }
 
 pub fn remove(path: &PathBuf, alias: &str) -> bool {
+    // create backup
+    if let Err(e) = file::create_routine_backup(path) {
+        eprintln!("Warning: Could not create backup file: {e}");
+    }
+
     let lines = file::read_file_to_vec(&path).unwrap_or_default();
     let mut new_lines: Vec<String> = Vec::new();
     let mut found: bool = false;
@@ -214,7 +226,7 @@ pub fn ls(
 
 pub fn migrate(path: &PathBuf) -> io::Result<()> {
     // create backup
-    let backup_path = file::create_backup(path)?;
+    let backup_path = file::create_snapshot_backup(path)?;
     println!("Backup created at {:?}", backup_path);
 
     // read and parse everything using the hybrid parser
