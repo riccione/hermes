@@ -212,9 +212,7 @@ pub fn ls(
         String::new()
     };
 
-    if alias_filter.is_none() {
-        println!("{0: <15} | {1: <15}", "Alias", "OTP");
-    }
+    let rem = otp::get_remaining_seconds();
 
     let mut output_data = Vec::new();
     for record in filtered_records {
@@ -231,6 +229,7 @@ pub fn ls(
                     serde_json::json!({
                         "alias": r.alias,
                         "otp": otp,
+                        "remaining_secs": rem,
                         "is_encrypted": !r.is_unencrypted,
                         "created_at": r.created_at
                     })
@@ -246,9 +245,11 @@ pub fn ls(
                 }
             } else {
                 // print the full table
-                println!("{0: <15} | {1: <15}", "Alias", "OTP");
+                println!("{0: <15} | {1: <10} | {2: <4}", "Alias", "OTP", "Rem");
+                println!("{:-<15}-|-{:-<10}-|-{:-<4}", "", "", "");
+
                 for (record, otp) in output_data {
-                    println!("{0: <15} | {1: <15}", record.alias, otp);
+                    println!("{0: <15} | {1: <10} | {2:}s", record.alias, otp, rem);
                 }
             }
         }

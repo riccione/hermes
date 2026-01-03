@@ -44,3 +44,11 @@ pub fn crypt(encrypt: bool, code: &String, password: &str) -> String {
         decrypted
     }
 }
+
+pub fn get_remaining_seconds() -> u64 {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    30 - (now % 30)
+}
