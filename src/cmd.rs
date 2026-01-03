@@ -282,3 +282,51 @@ pub fn migrate(path: &PathBuf) -> io::Result<()> {
     println!("Successfully migrated {count} records to JSON format.");
     Ok(())
 }
+
+pub fn rename(path: &PathBuf, old_alias: &str, new_alias: &str) -> Result<(), String> {
+    if file::alias_exists(new_alias, path) {
+        return Err(format!(
+            "The alias '{}' already exists. Choose a unique name.",
+            new_alias
+        ));
+    }
+
+    // For Legacy file format
+    if new_alias.contains(':') {
+        return Err("The new alias cannot contain ':'".to_string());
+    }
+
+    // read the file
+    let lines = file::read_file_to_vec(path).map_err(|e| e.to_string())?;
+    let mut found = false;
+    let mut updated_lines = Vec::new();
+
+    // process lines
+    for line in lines {
+        if let Some(mut record) = Record::from_line(&line) {
+            if record.alias == old_alias {
+                record.alias = new_alias.to_string(); // change the name
+                updated_lines.push(record.to_string()); // save the changed record
+                found = true;
+                continue;
+            }
+        }
+        updated_lines.push(line);
+    }
+
+    if !found {
+        return Err(format!("Alias '{}' not found.", old_alias));
+    }
+
+    // create backup
+    if let Err(e) = file::create_routine_backup(path) {
+        eprintln!("Warning: Could not create backup file: {e}");
+    }
+
+    // save back to file
+    let data = updated_lines.join("\n") + "\n";
+    file::write_to_file(path, &data, "Alias renamed").map_err(|e| e.to_string())?;
+
+    println!("Successfully renamed '{}' to '{}'", old_alias, new_alias);
+    Ok(())
+}

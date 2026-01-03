@@ -51,6 +51,11 @@ enum Commands {
         #[clap(flatten)]
         encryption: EncryptArgs,
     },
+    /// Rename alias
+    Rename {
+        old_alias: String,
+        new_alias: String,
+    },
     /// Get codes for all/alias records
     Ls {
         #[clap(short = 'a', long)]
@@ -113,6 +118,12 @@ fn run(args: Args, codex_path: PathBuf) -> Result<(), String> {
                 &encryption.unencrypt,
                 &encryption.password,
             );
+        }
+        Commands::Rename {
+            old_alias,
+            new_alias,
+        } => {
+            cmd::rename(&codex_path, old_alias.as_str(), new_alias.as_str())?;
         }
         Commands::Ls {
             alias,
