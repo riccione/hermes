@@ -108,7 +108,7 @@ pub fn add(
             .expect("Failed to save codex");
     }
 
-    let otp = otp::generate_otp(code);
+    let otp = otp::generate_otp(clean_code);
     println!("{otp}");
 }
 
