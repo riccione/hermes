@@ -15,7 +15,7 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-pub fn get_codex_path() -> PathBuf {
+pub fn get_default_path() -> PathBuf {
     // using dirs fn to get location of config directory
     let mut codex_path = dirs::config_dir().expect("Failed to get config path");
     codex_path.push(PROJECT);

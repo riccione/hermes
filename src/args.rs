@@ -4,6 +4,9 @@ use std::path::PathBuf;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)] // Read from Cargo.toml
 pub struct Cli {
+    #[arg(short, long, global = true, help = "Custom path to the codex file")]
+    pub path: Option<PathBuf>,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -21,7 +24,7 @@ pub struct EncryptArgs {
     #[clap(short = 'u', long, verbatim_doc_comment)]
     pub unencrypt: bool,
     /// WARNING: Using this flag leaves password in shell history.
-    #[clap(short = 'p', long, verbatim_doc_comment)]
+    #[clap(long, verbatim_doc_comment)]
     pub password: Option<String>,
 }
 

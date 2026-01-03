@@ -10,8 +10,16 @@ use args::{Cli, Commands};
 use clap::Parser;
 
 fn main() {
-    let codex_path: PathBuf = file::get_codex_path();
     let cli = Cli::parse();
+
+    // resolve which path to use
+    // priority 1 => --path
+    // priority 2 => env var HERMES_PATH
+    // priority 3 => default location ~/.config/hermes/
+    let codex_path = cli
+        .path
+        .or_else(|| std::env::var("HERMES_PATH").ok().map(PathBuf::from))
+        .unwrap_or_else(|| file::get_default_path());
 
     if let Err(e) = run(cli.command, codex_path) {
         eprintln!("Error: {e}");
