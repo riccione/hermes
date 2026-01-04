@@ -1,4 +1,3 @@
-use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 mod args;
@@ -7,82 +6,29 @@ mod file;
 mod models;
 mod otp;
 
-use crate::args::OutputFormat;
-
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)] // Read from Cargo.toml
-struct Args {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(clap::Args)]
-struct EncryptArgs {
-    /// WARNING: Store the secret in plain text. Use for debugging only.
-    #[clap(short = 'u', long, verbatim_doc_comment)]
-    unencrypt: bool,
-    /// WARNING: Using this flag leaves password in shell history.
-    #[clap(short = 'p', long, verbatim_doc_comment)]
-    password: Option<String>,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Adds code to the hermes
-    Add {
-        #[clap(short = 'a', long)]
-        alias: String,
-        #[clap(short = 'c', long)]
-        code: String,
-        #[clap(flatten)]
-        encryption: EncryptArgs,
-    },
-    /// Remove code from the hermes
-    Remove {
-        #[clap(short = 'a', long)]
-        alias: String,
-    },
-    /// Update code by alias
-    Update {
-        #[clap(short = 'a', long)]
-        alias: String,
-        #[clap(short = 'c', long)]
-        code: String,
-        #[clap(flatten)]
-        encryption: EncryptArgs,
-    },
-    /// Rename alias
-    Rename {
-        old_alias: String,
-        new_alias: String,
-    },
-    /// Get codes for all/alias records
-    Ls {
-        #[clap(short = 'a', long)]
-        alias: Option<String>,
-        #[arg(short = 'f', long, value_enum, default_value_t = OutputFormat::Table)]
-        format: OutputFormat,
-        #[clap(flatten)]
-        encryption: EncryptArgs,
-    },
-    /// Show location of codex file
-    Config {},
-    /// Migrate legacy codex format to JSON
-    Migrate,
-}
+use args::{Cli, Commands};
+use clap::Parser;
 
 fn main() {
-    let codex_path: PathBuf = file::get_codex_path();
-    let args = Args::parse();
+    let cli = Cli::parse();
 
-    if let Err(e) = run(args, codex_path) {
+    // resolve which path to use
+    // priority 1 => --path
+    // priority 2 => env var HERMES_PATH
+    // priority 3 => default location ~/.config/hermes/
+    let codex_path = cli
+        .path
+        .or_else(|| std::env::var("HERMES_PATH").ok().map(PathBuf::from))
+        .unwrap_or_else(|| file::get_default_path());
+
+    if let Err(e) = run(cli.command, codex_path) {
         eprintln!("Error: {e}");
         std::process::exit(1);
     }
 }
 
-fn run(args: Args, codex_path: PathBuf) -> Result<(), String> {
-    match &args.command {
+fn run(command: Commands, codex_path: PathBuf) -> Result<(), String> {
+    match command {
         Commands::Add {
             alias,
             code,
@@ -99,7 +45,7 @@ fn run(args: Args, codex_path: PathBuf) -> Result<(), String> {
                 code.as_str(),
                 &encryption.unencrypt,
                 &encryption.password,
-            );
+            )?;
         }
         Commands::Remove { alias } => {
             if !cmd::remove(&codex_path, alias.as_str()) {
@@ -132,10 +78,10 @@ fn run(args: Args, codex_path: PathBuf) -> Result<(), String> {
         } => {
             cmd::ls(
                 &codex_path,
-                alias,
+                &alias,
                 &encryption.unencrypt,
                 &encryption.password,
-                format,
+                &format,
             );
         }
         Commands::Config {} => {

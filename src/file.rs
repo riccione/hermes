@@ -1,3 +1,4 @@
+use crate::models::Record;
 use dirs;
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, Write};
@@ -15,7 +16,7 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-pub fn get_codex_path() -> PathBuf {
+pub fn get_default_path() -> PathBuf {
     // using dirs fn to get location of config directory
     let mut codex_path = dirs::config_dir().expect("Failed to get config path");
     codex_path.push(PROJECT);
@@ -54,11 +55,10 @@ pub fn write_to_file(path: &PathBuf, data: &str, msg: &str) -> io::Result<()> {
 
 pub fn alias_exists(alias: &str, codex_path: &PathBuf) -> bool {
     // read codes file and search for alias
-    if let Ok(lines) = read_lines(codex_path) {
+    if let Ok(lines) = read_file_to_vec(codex_path) {
         for line in lines {
-            if let Ok(l) = line {
-                let x: Vec<_> = l.split(":").collect();
-                if x[0] == alias {
+            if let Some(record) = Record::from_line(&line) {
+                if record.alias == alias {
                     return true;
                 }
             }
@@ -68,9 +68,15 @@ pub fn alias_exists(alias: &str, codex_path: &PathBuf) -> bool {
 }
 
 pub fn create_path(path: &PathBuf) -> io::Result<()> {
-    let mut p = path.clone();
-    p.pop();
-    std::fs::create_dir_all(p)
+    // only attempt to create directories if there is a parent component
+    if let Some(parent) = path.parent() {
+        // if the path is just "test.codex", parent() might be Some("") or empty
+        // call create_dir_all if the parent isn't empty
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)?;
+        }
+    }
+    Ok(())
 }
 
 fn perform_backup(path: &PathBuf, extension: String) -> io::Result<PathBuf> {
