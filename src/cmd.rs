@@ -38,18 +38,10 @@ pub fn add(
     code: &str,
     unencrypt: &bool,
     password: &Option<String>,
-) {
+) -> Result<(), String> {
     // make code uppercase to solve the bug #1
     let binding = code.to_uppercase().replace("=", "");
     let clean_code = binding.as_str();
-
-    // create a storage file if it does not exist
-    let secret = if *unencrypt {
-        clean_code.to_string()
-    } else {
-        let pass = get_effective_password(password);
-        otp::crypt(true, &clean_code.to_string(), &pass)
-    };
 
     /* Validate code - check if it is a valid base32
      * Here I beleive it is necessary to add some explanation for base32 and TOTP.
@@ -81,35 +73,43 @@ pub fn add(
      * I stick for now with data-encoding only because it more popular.
      */
     if let Err(e) = BASE32_NOPAD.decode(clean_code.as_bytes()) {
-        eprintln!("Error data-encoding BASE32: {e}");
-        std::process::exit(1);
+        return Err(format!("Error data-encoding BASE32: {e}"));
     }
 
-    // create Record Obj
+    // encrypt if necessary
+    let secret = if *unencrypt {
+        clean_code.to_string()
+    } else {
+        let pass = get_effective_password(password);
+        otp::crypt(true, &clean_code.to_string(), &pass)
+    };
+
+    // serialize and save
     let record = Record::new(alias.to_string(), secret.to_string(), *unencrypt);
-    let json_data = serde_json::to_string(&record).expect("Failed to serialize record");
+    let json_data = serde_json::to_string(&record).map_err(|e| e.to_string())?;
 
     if file::file_exists(codex_path) {
         // check for duplicates
         if file::alias_exists(alias, codex_path) {
-            eprintln!("Alias already exists, please select another one");
-            std::process::exit(1);
+            return Err(format!("Alias '{}' already exists.", alias));
         }
 
         // create backup
-        if let Err(e) = file::create_routine_backup(codex_path) {
-            eprintln!("Warning: Could not create backup file: {e}");
-        }
+        file::create_routine_backup(codex_path)
+            .map_err(|e| format!("Warning: Backup failed: {}", e))?;
 
-        file::write(codex_path, &json_data).expect("Failed to append record");
+        file::write(codex_path, &json_data).map_err(|e| e.to_string())?;
     } else {
-        file::create_path(codex_path).expect("Failed to create path");
-        file::write_to_file(codex_path, &json_data, "Record saved to codex")
-            .expect("Failed to save codex");
+        file::create_path(codex_path).map_err(|e| e.to_string())?;
+
+        file::write_to_file(codex_path, &json_data, "Record saved to new codex")
+            .map_err(|e| e.to_string())?;
     }
 
     let otp = otp::generate_otp(clean_code);
     println!("{otp}");
+
+    Ok(())
 }
 
 pub fn update_code(
@@ -141,7 +141,7 @@ pub fn update_code(
 
     // Do the swap
     if remove(codex_path, alias) {
-        add(codex_path, alias, &sanitized_code, unenc, &effective_pass);
+        let _ = add(codex_path, alias, &sanitized_code, unenc, &effective_pass);
         println!("Record for '{alias}' successfully updated.");
     }
 }

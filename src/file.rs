@@ -68,9 +68,15 @@ pub fn alias_exists(alias: &str, codex_path: &PathBuf) -> bool {
 }
 
 pub fn create_path(path: &PathBuf) -> io::Result<()> {
-    let mut p = path.clone();
-    p.pop();
-    std::fs::create_dir_all(p)
+    // only attempt to create directories if there is a parent component
+    if let Some(parent) = path.parent() {
+        // if the path is just "test.codex", parent() might be Some("") or empty
+        // call create_dir_all if the parent isn't empty
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)?;
+        }
+    }
+    Ok(())
 }
 
 fn perform_backup(path: &PathBuf, extension: String) -> io::Result<PathBuf> {

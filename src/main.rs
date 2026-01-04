@@ -45,7 +45,7 @@ fn run(command: Commands, codex_path: PathBuf) -> Result<(), String> {
                 code.as_str(),
                 &encryption.unencrypt,
                 &encryption.password,
-            );
+            )?;
         }
         Commands::Remove { alias } => {
             if !cmd::remove(&codex_path, alias.as_str()) {
