@@ -1,3 +1,4 @@
+use crate::models::Record;
 use dirs;
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, Write};
@@ -54,11 +55,10 @@ pub fn write_to_file(path: &PathBuf, data: &str, msg: &str) -> io::Result<()> {
 
 pub fn alias_exists(alias: &str, codex_path: &PathBuf) -> bool {
     // read codes file and search for alias
-    if let Ok(lines) = read_lines(codex_path) {
+    if let Ok(lines) = read_file_to_vec(codex_path) {
         for line in lines {
-            if let Ok(l) = line {
-                let x: Vec<_> = l.split(":").collect();
-                if x[0] == alias {
+            if let Some(record) = Record::from_line(&line) {
+                if record.alias == alias {
                     return true;
                 }
             }
