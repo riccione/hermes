@@ -45,6 +45,27 @@ fn fail_add_missing_args() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn add_remove_isolated_flow() -> Result<(), Box<dyn std::error::Error>> {
+    let file = NamedTempFile::new()?;
+    let path = file.path();
+
+    hermes(path)
+        .arg("add")
+        .args(&["-a", ALIAS, "-c", CODE, "--password", PASSWORD])
+        .assert()
+        .success();
+
+    hermes(path)
+        .arg("remove")
+        .args(&["-a", ALIAS])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(format!("Record for {} removed.", ALIAS)));
+
+    Ok(())
+}
+
+#[test]
 #[ignore]
 fn add_remove_code_simple() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("hermes").expect("binary exists");
