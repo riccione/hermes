@@ -189,10 +189,13 @@ pub fn ls(
 
     let records: Vec<Record> = lines.iter().filter_map(|l| Record::from_line(l)).collect();
 
+    // apply search filter
     let filtered_records: Vec<&Record> = records
         .iter()
         .filter(|r| match alias_filter {
-            Some(f) => f == &r.alias,
+            // partial match
+            Some(f) => r.alias.to_lowercase().contains(&f.to_lowercase()),
+            // display everything
             None => true,
         })
         .collect();
@@ -215,7 +218,7 @@ pub fn ls(
     let rem = otp::get_remaining_seconds();
 
     let mut output_data = Vec::new();
-    for record in filtered_records {
+    for record in &filtered_records {
         let otp = get(unencrypt, record, &pass);
         output_data.push((record, otp));
     }
@@ -238,7 +241,7 @@ pub fn ls(
             println!("{}", serde_json::to_string_pretty(&json_list).unwrap());
         }
         OutputFormat::Table => {
-            if let Some(_alias) = alias_filter {
+            if alias_filter.is_some() && filtered_records.len() == 1 {
                 // if specific alias requested, print only the OTP raw
                 if let Some((_, otp)) = output_data.first() {
                     println!("{otp}");
