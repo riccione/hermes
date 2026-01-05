@@ -66,72 +66,28 @@ fn add_remove_isolated_flow() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-#[ignore]
-fn add_remove_code_simple() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("hermes").expect("binary exists");
-
-    cmd.arg("add")
-        .args(&["-a", ALIAS])
-        .args(&["-c", CODE])
-        .args(&["-p", PASSWORD])
-        .assert()
-        .success()
-        .stdout(predicate::str::is_match("[0-9]{6}").expect("Regex error!"));
-
-    let mut cmd = Command::cargo_bin("hermes").expect("binary exists");
-
-    cmd.arg("add")
-        .args(&["-a", ALIAS])
-        .args(&["-c", CODE])
-        .args(&["-p", PASSWORD])
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "Alias already exists, please select another one",
-        ));
-
-    let mut cmd = Command::cargo_bin("hermes").expect("binary exists");
-
-    let stdout_removed = format!("Record for {ALIAS} has been removed from codex");
-
-    cmd.arg("remove")
-        .args(&["-a", ALIAS])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(stdout_removed));
-
-    Ok(())
-}
-
-#[test]
-#[ignore]
-fn add_update_remove_code_simple() -> Result<(), Box<dyn std::error::Error>> {
+fn add_update_remove_isolated_flow() -> Result<(), Box<dyn std::error::Error>> {
+    let file = NamedTempFile::new()?;
+    let path = file.path();
     let alias = "test_update";
-    let stdout_removed = format!("Record for {alias} has been removed from codex");
+    let stdout_removed = format!("Record for {alias} removed.");
 
-    let mut cmd = Command::cargo_bin("hermes").expect("binary exists");
-
-    cmd.arg("add")
-        .args(&["-a", alias])
-        .args(&["-c", CODE])
-        .args(&["-p", PASSWORD])
+    hermes(path)
+        .arg("add")
+        .args(&["-a", alias, "-c", CODE, "--password", PASSWORD])
         .assert()
         .success()
-        .stdout(predicate::str::is_match("[0-9]{6}").expect("Regex error!"));
+        .stdout(predicate::str::is_match("[0-9]{6}")?);
 
-    let mut cmd = Command::cargo_bin("hermes").expect("binary exists");
-
-    cmd.arg("update")
-        .args(&["-a", alias])
-        .args(&["-c", CODE])
-        .args(&["-p", PASSWORD])
+    hermes(path)
+        .arg("update")
+        .args(&["-a", alias, "-c", CODE, "--password", PASSWORD])
         .assert()
         .success()
-        .stdout(predicate::str::contains(stdout_removed.clone()));
+        .stdout(predicate::str::contains(&stdout_removed));
 
-    let mut cmd = Command::cargo_bin("hermes").expect("binary exists");
-
-    cmd.arg("remove")
+    hermes(path)
+        .arg("remove")
         .args(&["-a", alias])
         .assert()
         .success()
