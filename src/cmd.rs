@@ -244,6 +244,15 @@ pub fn ls(
                     println!("{otp}");
                 }
             } else {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_else(|_| std::time::Duration::from_secs(0))
+                    .as_secs();
+
+                println!("Current System Unix Time: {}", now);
+                println!("Hint: If this is off by >30s, OTP codes will fail.");
+                println!("Compare this at https://www.unixtimestamp.com if codes fail.\n");
+
                 // print the full table
                 println!("{0: <15} | {1: <10} | {2: <4}", "Alias", "OTP", "Rem");
                 println!("{:-<15}-|-{:-<10}-|-{:-<4}", "", "", "");
