@@ -23,12 +23,8 @@ pub fn get_remaining_seconds() -> u64 {
     DEFAULT_STEP as u64 - (now % DEFAULT_STEP as u64)
 }
 
-// Odyssea V 45
-const TALARIA: &str = "immortales, aureos";
-
 /*
- * For TOTP I currently use totp-lite.
- * Another alternative is totp-rs.
+ * Alternative: totp-rs.
  */
 pub fn generate_otp(x: &str) -> Result<String, OtpError> {
     // decode Base32
@@ -45,18 +41,13 @@ pub fn generate_otp(x: &str) -> Result<String, OtpError> {
     Ok(otp)
 }
 
-/*
- * encrypt/decrypt fn uses magic_crypt crate
- */
-pub fn crypt(encrypt: bool, code: &String, password: &str) -> String {
-    let mcrypt = new_magic_crypt!(password.trim(), 256);
-    if encrypt {
-        mcrypt.encrypt_str_to_base64(code)
-    } else {
-        let decrypted = match mcrypt.decrypt_base64_to_string(code) {
-            Ok(decrypted) => decrypted,
-            Err(_) => TALARIA.to_string(),
-        };
-        decrypted
-    }
+pub fn encrypt(code: &str, password: &str) -> String {
+    let mc = new_magic_crypt!(password.trim(), 256);
+    mc.encrypt_str_to_base64(code)
+}
+
+pub fn decrypt(encrypted_code: &str, password: &str) -> Result<String, OtpError> {
+    let mc = new_magic_crypt!(password.trim(), 256);
+    mc.decrypt_base64_to_string(encrypted_code)
+        .map_err(|_| OtpError::DecryptionFailed)
 }

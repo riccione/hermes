@@ -18,20 +18,19 @@ fn get_effective_password(password: &Option<String>) -> String {
         .unwrap_or_else(input_password)
 }
 
-fn get(is_unencrypted: &bool, record: &Record, pass: &String) -> String {
-    let secret = if !record.is_unencrypted {
-        otp::crypt(false, &record.secret, pass)
+fn get(record: &Record, pass: &String) -> String {
+    let secret_result = if !record.is_unencrypted {
+        otp::decrypt(&record.secret, pass)
     } else {
-        record.secret.clone()
+        Ok(record.secret.clone())
     };
 
-    if *is_unencrypted && !record.is_unencrypted {
-        "Cannot decrypt - provide a password".to_string()
-    } else {
-        match otp::generate_otp(secret.as_str()) {
-            Ok(code) => code,
-            Err(_) => "Error: Invalid secret or decryption failed".to_string(),
+    match secret_result {
+        Ok(secret) => {
+            otp::generate_otp(&secret)
+                .unwrap_or_else(|_| "Error: Invalid secret".to_string())
         }
+        Err(_) => "Error: Invalid secret or decryption failed".to_string(),
     }
 }
 
@@ -84,7 +83,7 @@ pub fn add(
         clean_code.to_string()
     } else {
         let pass = get_effective_password(password);
-        otp::crypt(true, &clean_code.to_string(), &pass)
+        otp::encrypt(&clean_code.to_string(), &pass)
     };
 
     // serialize and save
@@ -225,7 +224,7 @@ pub fn ls(
 
     let mut output_data = Vec::new();
     for record in &filtered_records {
-        let otp = get(unencrypt, record, &pass);
+        let otp = get(record, &pass);
         output_data.push((record, otp));
     }
 
