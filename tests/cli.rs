@@ -95,3 +95,57 @@ fn add_update_remove_isolated_flow() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn rename_alias_isolated_flow() -> Result<(), Box<dyn std::error::Error>> {
+    let file = NamedTempFile::new()?;
+    let path = file.path();
+
+    // add two initial records
+    hermes(path)
+        .arg("add")
+        .args(&["-a", "github", "-c", CODE, "--password", PASSWORD])
+        .assert()
+        .success();
+
+    hermes(path)
+        .arg("add")
+        .args(&["-a", "google", "-c", CODE, "--password", PASSWORD])
+        .assert()
+        .success();
+
+    // rename: github -> gh
+    hermes(path)
+        .arg("rename")
+        .args(&["github", "gh"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Successfully renamed"));
+
+    // verify: new alias exists, old alias is gone
+    hermes(path)
+        .arg("ls")
+        .args(&["-a", "gh"])
+        .args(&["--password", PASSWORD])
+        .assert()
+        .success()
+        .stdout(predicate::str::is_match(r"^\d{6}")?);
+
+    hermes(path)
+        .arg("ls")
+        .args(&["-a", "github"])
+        .args(&["--password", PASSWORD])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Alias not found"));
+
+    // collision Check: try to rename 'gh' to 'google' (exists)
+    hermes(path)
+        .arg("rename")
+        .args(&["gh", "google"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("already exists"));
+
+    Ok(())
+}

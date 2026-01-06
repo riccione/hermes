@@ -202,7 +202,8 @@ pub fn ls(
 
     if filtered_records.is_empty() {
         if alias_filter.is_some() {
-            println!("Alias not found.");
+            eprintln!("Alias not found.");
+            std::process::exit(1);
         }
         return;
     }
