@@ -149,3 +149,49 @@ fn rename_alias_isolated_flow() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn ls_partial_search_isolated() -> Result<(), Box<dyn std::error::Error>> {
+    let file = NamedTempFile::new()?;
+    let path = file.path();
+
+    // add multiple records with similar prefixes
+    hermes(path)
+        .arg("add")
+        .args(&["-a", "google", "-c", CODE, "--password", PASSWORD])
+        .assert()
+        .success();
+
+    hermes(path)
+        .arg("add")
+        .args(&["-a", "goodreads", "-c", CODE, "--password", PASSWORD])
+        .assert()
+        .success();
+
+    hermes(path)
+        .arg("add")
+        .args(&["-a", "github", "-c", CODE, "--password", PASSWORD])
+        .assert()
+        .success();
+
+    // test partial search: "goo" should return google and goodreads only
+    hermes(path)
+        .arg("ls")
+        .args(&["-a", "goo"])
+        .args(&["--password", PASSWORD])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("google"))
+        .stdout(predicate::str::contains("goodreads"))
+        .stdout(predicate::str::contains("github").count(0)); // no github
+
+    // test non-matching search
+    hermes(path)
+        .arg("ls")
+        .args(&["-a", "no_match"])
+        .args(&["--password", PASSWORD])
+        .assert()
+        .failure(); 
+
+    Ok(())
+}
