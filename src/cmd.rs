@@ -18,17 +18,20 @@ fn get_effective_password(password: &Option<String>) -> String {
         .unwrap_or_else(input_password)
 }
 
-fn get(unenc: &bool, record: &Record, pass: &String) -> String {
-    let code = if !record.is_unencrypted {
+fn get(is_unencrypted: &bool, record: &Record, pass: &String) -> String {
+    let secret = if !record.is_unencrypted {
         otp::crypt(false, &record.secret, pass)
     } else {
         record.secret.clone()
     };
 
-    if *unenc && !record.is_unencrypted {
+    if *is_unencrypted && !record.is_unencrypted {
         "Cannot decrypt - provide a password".to_string()
     } else {
-        otp::generate_otp(code.as_str())
+        match otp::generate_otp(secret.as_str()) {
+            Ok(code) => code,
+            Err(_) => "Error: Invalid secret or decryption failed".to_string(),
+        }
     }
 }
 
@@ -106,8 +109,10 @@ pub fn add(
             .map_err(|e| e.to_string())?;
     }
 
-    let otp = otp::generate_otp(clean_code);
-    println!("{otp}");
+    match otp::generate_otp(clean_code) {
+        Ok(code) => println!("{code}"),
+        Err(_) => println!("Error: failed to generate OTP"),
+    }
 
     Ok(())
 }

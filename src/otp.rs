@@ -30,23 +30,19 @@ const TALARIA: &str = "immortales, aureos";
  * For TOTP I currently use totp-lite.
  * Another alternative is totp-rs.
  */
-pub fn generate_otp(x: &str) -> String {
-    // handles case where password cannot decrypt the code
-    if x == TALARIA {
-        return "Error: cannot decrypt".to_string();
-    }
+pub fn generate_otp(x: &str) -> Result<String, OtpError> {
+    // decode Base32
+    let decoded = BASE32_NOPAD
+        .decode(x.as_bytes())
+        .map_err(|_| OtpError::InvalidBase32)?;
 
-    match BASE32_NOPAD.decode(x.as_bytes()) {
-        Ok(x) => {
-            let seconds: u64 = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs();
+    // get current timestamp
+    let now = get_current_timestamp()?;
 
-            totp_custom::<Sha1>(DEFAULT_STEP, 6, &x, seconds)
-        }
-        Err(e) => format!("Error: {e:?}"),
-    }
+    // generate OTP
+    let otp = totp_custom::<Sha1>(DEFAULT_STEP, 6, &decoded, now);
+
+    Ok(otp)
 }
 
 /*
