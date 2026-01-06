@@ -11,20 +11,22 @@ use clap::Parser;
 
 fn main() {
     let cli = Cli::parse();
-
-    // resolve which path to use
-    // priority 1 => --path
-    // priority 2 => env var HERMES_PATH
-    // priority 3 => default location ~/.config/hermes/
-    let codex_path = cli
-        .path
-        .or_else(|| std::env::var("HERMES_PATH").ok().map(PathBuf::from))
-        .unwrap_or_else(|| file::get_default_path());
+    let codex_path = resolve_codex_path(&cli);
 
     if let Err(e) = run(cli.command, codex_path) {
         eprintln!("Error: {e}");
         std::process::exit(1);
     }
+}
+
+fn resolve_codex_path(cli: &Cli) -> PathBuf {
+    // priority 1 => --path
+    // priority 2 => env var HERMES_PATH
+    // priority 3 => default location ~/.config/hermes/
+    cli.path
+        .clone()
+        .or_else(|| std::env::var("HERMES_PATH").ok().map(PathBuf::from))
+        .unwrap_or_else(|| file::get_default_path())
 }
 
 fn run(command: Commands, codex_path: PathBuf) -> Result<(), String> {
