@@ -3,6 +3,26 @@ use magic_crypt::{new_magic_crypt, MagicCryptTrait};
 use std::time::{SystemTime, UNIX_EPOCH};
 use totp_lite::{totp_custom, Sha1, DEFAULT_STEP};
 
+pub enum OtpError {
+    DecryptionFailed,
+    InvalidBase32,
+    SystemTimeError,
+}
+
+// helper fn to get UNIX timestamp
+fn get_current_timestamp() -> Result<u64, OtpError> {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .map_err(|_| OtpError::SystemTimeError)
+}
+
+pub fn get_remaining_seconds() -> u64 {
+    let now = get_current_timestamp().unwrap_or(0);
+    // DEFAULT_STEP == 30s
+    DEFAULT_STEP as u64 - (now % DEFAULT_STEP as u64)
+}
+
 // Odyssea V 45
 const TALARIA: &str = "immortales, aureos";
 
@@ -43,12 +63,4 @@ pub fn crypt(encrypt: bool, code: &String, password: &str) -> String {
         };
         decrypted
     }
-}
-
-pub fn get_remaining_seconds() -> u64 {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    30 - (now % 30)
 }
