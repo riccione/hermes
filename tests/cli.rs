@@ -195,3 +195,46 @@ fn ls_partial_search_isolated() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn ls_json_format_isolated() -> Result<(), Box<dyn std::error::Error>> {
+    let file = NamedTempFile::new()?;
+    let path = file.path();
+
+    // add multiply records
+    let entries = vec![("apple", CODE), ("banana", CODE)];
+    for (alias, code) in &entries {
+        hermes(path)
+            .arg("add")
+            .args(&["-a", alias, "-c", code, "--password", PASSWORD])
+            .assert()
+            .success();
+    }
+
+    // ls with JSON format
+    let output = hermes(path)
+        .arg("ls")
+        .args(&["--password", PASSWORD])
+        .args(&["--format", "json"])
+        .output()?;
+
+    // parse the actual JSON
+    // it will panic if the output is not valid JSON
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+
+    // verify structure
+    assert!(json.is_array(), "Output should be a JSON array");
+    
+    let array = json.as_array().unwrap();
+    assert_eq!(array.len(), 2, "Should contain exactly 2 records");
+
+    // check if the first entry contains the expected key
+    let first_record = &array[0];
+    assert!(first_record.get("alias").is_some(), "Record missing 'alias' field");
+    
+    // verify specific content
+    let has_apple = array.iter().any(|r| r["alias"] == "apple");
+    assert!(has_apple, "JSON output missing 'apple' alias");
+
+    Ok(())
+}
