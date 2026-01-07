@@ -23,22 +23,6 @@ fn get_effective_password(password: &Option<String>) -> String {
             .expect("Failed to read password"))
 }
 
-fn get(record: &Record, pass: &String) -> String {
-    let secret_result = if !record.is_unencrypted {
-        otp::decrypt(&record.secret, pass)
-    } else {
-        Ok(record.secret.clone())
-    };
-
-    match secret_result {
-        Ok(secret) => {
-            otp::generate_otp(&secret)
-                .unwrap_or_else(|_| "Error: Invalid secret".to_string())
-        }
-        Err(_) => "Error: Invalid secret or decryption failed".to_string(),
-    }
-}
-
 /* Validate code - check if it is a valid base32
 * Here I beleive it is necessary to add some explanation for base32 and TOTP.
 * Overtime I forgot what it does and my code comments are not good :/
@@ -181,7 +165,7 @@ pub fn ls(
     format: &OutputFormat,
 ) -> Result<(), String> {
     let lines = file::read_file_to_vec(path)
-        .map_err(|e| "Codex not found.")?;
+        .map_err(|_| "Codex not found.")?;
     let records: Vec<Record> = lines.iter()
         .filter_map(|l| Record::from_line(l)).collect();
 
@@ -218,44 +202,37 @@ pub fn ls(
     Ok(())
 }
 
+fn get_otp_display(record: &Record, pass: &str) -> String {
+    let secret = if record.is_unencrypted {
+        Ok(record.secret.clone())
+    } else {
+        otp::decrypt(&record.secret, pass)
+    };
+
+    secret
+        .and_then(|s| otp::generate_otp(&s).map_err(|_| otp::OtpError::InvalidBase32))
+        .unwrap_or_else(|_| "Error Invalid secret or decryption failed".to_string())
+}
+
 fn print_table(records: &[&Record], pass: &str, rem: u64, is_single_alias: bool) {
     if is_single_alias && records.len() == 1 {
-        let secret = if records[0].is_unencrypted { 
-            Ok(records[0].secret.clone())
-        } else {
-            otp::decrypt(&records[0].secret, pass)
-        };
-        println!("{}", secret.and_then(|s| otp::generate_otp(&s)
-            .map_err(|_| otp::OtpError::InvalidBase32)).unwrap_or_else(|_| "Error".into()));
+        println!("{}", get_otp_display(records[0], pass));
         return;
     }
 
     println!("{0: <15} | {1: <10} | {2: <4}", "Alias", "OTP", "Rem");
     println!("{:-<15}-|-{:-<10}-|-{:-<4}", "", "", "");
     for r in records {
-        let secret = if r.is_unencrypted {
-            Ok(r.secret.clone())
-        } else {
-            otp::decrypt(&r.secret, pass)
-        };
-        let code = secret.and_then(|s| otp::generate_otp(&s)
-            .map_err(|_| otp::OtpError::InvalidBase32)).unwrap_or_else(|_| "Err".into());
-        println!("{0: <15} | {1: <10} | {2:}s", r.alias, code, rem);
+        let otp = get_otp_display(r, pass);
+        println!("{0: <15} | {1: <10} | {2:}s", r.alias, otp, rem);
     }
 }
 
 fn print_json(records: &[&Record], pass: &str, rem: u64) {
     let list: Vec<serde_json::Value> = records.iter().map(|r| {
-        let secret = if r.is_unencrypted {
-            Ok(r.secret.clone())
-        } else {
-            otp::decrypt(&r.secret, pass)
-        };
-        let code = secret.and_then(|s| otp::generate_otp(&s)
-            .map_err(|_| otp::OtpError::InvalidBase32)).unwrap_or_else(|_| "Error".into());
         serde_json::json!({
             "alias": r.alias,
-            "otp": code,
+            "otp": get_otp_display(r, pass),
             "remaining_secs": rem,
             "is_encrypted": !r.is_unencrypted,
             "created_at": r.created_at
