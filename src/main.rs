@@ -37,23 +37,24 @@ fn run(command: Commands, codex_path: PathBuf) -> Result<(), String> {
             encryption,
         } => {
             if alias.contains(":") {
-                eprintln!("Error: Don't use ':' in alias.");
-                std::process::exit(1);
+                return Err("Error: Don't use ':' in alias.".to_string());
             }
 
             cmd::add(
                 &codex_path,
-                alias.as_str(),
-                code.as_str(),
+                &alias,
+                &code,
                 &encryption.unencrypt,
                 &encryption.password,
             )?;
         }
+
         Commands::Remove { alias } => {
             if !cmd::remove(&codex_path, alias.as_str()) {
-                eprintln!("Error: Could not find alias '{}'", alias);
+                return Err(format!("Error: Could not find alias '{alias}'"));
             }
         }
+
         Commands::Update {
             alias,
             code,
@@ -61,18 +62,20 @@ fn run(command: Commands, codex_path: PathBuf) -> Result<(), String> {
         } => {
             cmd::update_code(
                 &codex_path,
-                alias.as_str(),
-                code.as_str(),
+                &alias,
+                &code,
                 &encryption.unencrypt,
                 &encryption.password,
             );
         }
+
         Commands::Rename {
             old_alias,
             new_alias,
         } => {
-            cmd::rename(&codex_path, old_alias.as_str(), new_alias.as_str())?;
+            cmd::rename(&codex_path, &old_alias, &new_alias)?;
         }
+
         Commands::Ls {
             alias,
             format,
@@ -90,14 +93,13 @@ fn run(command: Commands, codex_path: PathBuf) -> Result<(), String> {
             if codex_path.exists() {
                 println!("{}", codex_path.display());
             } else {
-                eprintln!("Codex file does not exists at {}", codex_path.display());
+                return Err(format!("Codex file does not exists at {}", codex_path.display()));
             }
         }
+
         Commands::Migrate => {
-            if let Err(e) = cmd::migrate(&codex_path) {
-                eprintln!("Migration failed: {e}");
-                std::process::exit(1);
-            }
+            cmd::migrate(&codex_path)
+                .map_err(|e| format!("Migration failed: {e}"))?;
         }
     }
     Ok(())
