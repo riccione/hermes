@@ -89,11 +89,10 @@ fn run(command: Commands, codex_path: PathBuf) -> Result<(), String> {
         }
 
         Commands::Config {} => {
-            if codex_path.exists() {
-                println!("{}", codex_path.display());
-            } else {
-                return Err(format!("Codex file does not exists at {}", codex_path.display()));
-            }
+            codex_path.exists()
+                .then(|| println!("{}", codex_path.display()))
+                .ok_or_else(|| format!("Codex file does not exists at {}",
+                        codex_path.display()))?;
         }
 
         Commands::Migrate => {
