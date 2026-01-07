@@ -100,12 +100,13 @@ pub fn add(
         file::create_routine_backup(codex_path)
             .map_err(|e| format!("Warning: Backup failed: {}", e))?;
 
-        file::write(codex_path, &json_data).map_err(|e| e.to_string())?;
+        file::append_to_file(codex_path, &json_data).map_err(|e| e.to_string())?;
     } else {
-        file::create_path(codex_path).map_err(|e| e.to_string())?;
+        file::ensure_dir_exists(codex_path).map_err(|e| e.to_string())?;
 
-        file::write_to_file(codex_path, &json_data, "Record saved to new codex")
+        file::overwrite_file(codex_path, &json_data)
             .map_err(|e| e.to_string())?;
+        println!("Record saved to new codex");
     }
 
     match otp::generate_otp(clean_code) {
@@ -173,7 +174,7 @@ pub fn remove(path: &PathBuf, alias: &str) -> bool {
 
     if found {
         let data = new_lines.join("\n") + "\n";
-        file::write_to_file(path, &data, "Record removed").expect("Failed to update codex");
+        file::overwrite_file(path, &data).expect("Failed to update codex");
         println!("Record for {alias} removed.");
     }
     found
@@ -294,7 +295,7 @@ pub fn migrate(path: &PathBuf) -> io::Result<()> {
 
     // write back to the original file
     let new_content = migrated_records.join("\n") + "\n";
-    file::write_to_file(path, &new_content, "Migration data prepared.")?;
+    file::overwrite_file(path, &new_content)?;
 
     println!("Successfully migrated {count} records to JSON format.");
     Ok(())
@@ -342,7 +343,7 @@ pub fn rename(path: &PathBuf, old_alias: &str, new_alias: &str) -> Result<(), St
 
     // save back to file
     let data = updated_lines.join("\n") + "\n";
-    file::write_to_file(path, &data, "Alias renamed").map_err(|e| e.to_string())?;
+    file::overwrite_file(path, &data).map_err(|e| e.to_string())?;
 
     println!("Successfully renamed '{}' to '{}'", old_alias, new_alias);
     Ok(())

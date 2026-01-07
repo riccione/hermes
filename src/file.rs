@@ -8,66 +8,59 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const FILE_CODEX: &str = "codex";
 const PROJECT: &str = "hermes";
 
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where
-    P: AsRef<Path>,
-{
+pub fn get_default_path() -> PathBuf {
+    // using dirs fn to get location of config directory
+    dirs::config_dir()
+        .map(|mut path| {
+            path.push(PROJECT);
+            path.push(FILE_CODEX);
+            path
+        })
+        .expect("Error: Failed to get config path")
+}
+
+pub fn file_exists(path: &Path) -> bool {
+    path.exists()
+}
+
+fn read_lines<P: AsRef<Path>>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>> {
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
 }
 
-pub fn get_default_path() -> PathBuf {
-    // using dirs fn to get location of config directory
-    let mut codex_path = dirs::config_dir().expect("Failed to get config path");
-    codex_path.push(PROJECT);
-    codex_path.push(FILE_CODEX);
-    codex_path
-}
-
-pub fn file_exists(path: &PathBuf) -> bool {
-    Path::new(&path).exists()
-}
-
-pub fn read_file_to_vec(path: &PathBuf) -> io::Result<Vec<String>> {
-    read_lines(path)
-        .map_err(|_| {
+pub fn read_file_to_vec(path: &Path) -> io::Result<Vec<String>> {
+    read_lines(path)?
+        .collect::<io::Result<Vec<String>>>()
+        .map_err(|e| {
             io::Error::new(
-                io::ErrorKind::NotFound,
-                format!(
-                    "Codex file not found at {:?}. Use 'add' to create it.",
-                    path
-                ),
+                e.kind(),
+                format!("Error reading codex at {:?}: {e}", path),
             )
-        })?
-        .collect()
+        })
 }
 
-pub fn write(path: &PathBuf, data: &str) -> io::Result<()> {
+pub fn append_to_file(path: &Path, data: &str) -> io::Result<()> {
     let mut data_file = OpenOptions::new().append(true).open(path)?;
     writeln!(data_file, "{}", data.trim())
 }
 
-pub fn write_to_file(path: &PathBuf, data: &str, msg: &str) -> io::Result<()> {
-    std::fs::write(path, data)?;
-    println!("{msg}");
-    Ok(())
+pub fn overwrite_file(path: &Path, data: &str) -> io::Result<()> {
+    std::fs::write(path, data)
 }
 
-pub fn alias_exists(alias: &str, codex_path: &PathBuf) -> bool {
-    // read codes file and search for alias
-    if let Ok(lines) = read_file_to_vec(codex_path) {
-        for line in lines {
-            if let Some(record) = Record::from_line(&line) {
-                if record.alias == alias {
-                    return true;
-                }
-            }
-        }
-    }
-    false
+pub fn alias_exists(alias: &str, path: &Path) -> bool {
+    read_file_to_vec(path)
+        .map(|lines| {
+            lines.iter().any(|line| {
+                Record::from_line(line)
+                    .map(|r| r.alias == alias)
+                    .unwrap_or(false)
+            })
+        })
+        .unwrap_or(false)
 }
 
-pub fn create_path(path: &PathBuf) -> io::Result<()> {
+pub fn ensure_dir_exists(path: &Path) -> io::Result<()> {
     // only attempt to create directories if there is a parent component
     if let Some(parent) = path.parent() {
         // if the path is just "test.codex", parent() might be Some("") or empty
@@ -79,7 +72,7 @@ pub fn create_path(path: &PathBuf) -> io::Result<()> {
     Ok(())
 }
 
-fn perform_backup(path: &PathBuf, extension: String) -> io::Result<PathBuf> {
+fn perform_backup(path: &Path, extension: &str) -> io::Result<PathBuf> {
     if !path.exists() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
@@ -87,7 +80,7 @@ fn perform_backup(path: &PathBuf, extension: String) -> io::Result<PathBuf> {
         ));
     }
 
-    let mut backup_path = path.clone();
+    let mut backup_path = path.to_path_buf();
     backup_path.set_extension(extension);
 
     std::fs::copy(path, &backup_path)?;
@@ -95,16 +88,16 @@ fn perform_backup(path: &PathBuf, extension: String) -> io::Result<PathBuf> {
 }
 
 // routine backups for add and remove cmd
-pub fn create_routine_backup(path: &PathBuf) -> io::Result<PathBuf> {
-    perform_backup(path, "bak".to_string())
+pub fn create_routine_backup(path: &Path) -> io::Result<PathBuf> {
+    perform_backup(path, "bak")
 }
 
 // backup for migration with UNIX timestamp
-pub fn create_snapshot_backup(path: &PathBuf) -> io::Result<PathBuf> {
+pub fn create_snapshot_backup(path: &Path) -> io::Result<PathBuf> {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
         .as_secs();
 
-    perform_backup(path, format!("{}.bak", timestamp))
+    perform_backup(path, &format!("{}.bak", timestamp))
 }
