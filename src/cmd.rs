@@ -4,18 +4,23 @@ use crate::models::Record;
 use crate::otp;
 use data_encoding::BASE32_NOPAD;
 use std::io;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 
-fn input_password() -> String {
-    let password = rpassword::prompt_password("Enter password: ").expect("Failed to read password");
-    password
+fn sanitize_and_validate_code(code: &str) -> Result<String, String> {
+    let clean = code.to_uppercase().replace("=", "");
+    BASE32_NOPAD
+        .decode(clean.as_bytes())
+        .map_err(|e| format!("Invalid Base32 code: {e}"))?;
+
+    Ok(clean)
 }
 
 fn get_effective_password(password: &Option<String>) -> String {
     password
         .clone()
         .or_else(|| std::env::var("HERMES_PASSWORD").ok())
-        .unwrap_or_else(input_password)
+        .unwrap_or_else(|| rpassword::prompt_password("Enter password: ")
+            .expect("Failed to read password"))
 }
 
 fn get(record: &Record, pass: &String) -> String {
@@ -34,82 +39,78 @@ fn get(record: &Record, pass: &String) -> String {
     }
 }
 
+/* Validate code - check if it is a valid base32
+* Here I beleive it is necessary to add some explanation for base32 and TOTP.
+* Overtime I forgot what it does and my code comments are not good :/
+* This is how it works:
+* 1. user enters username and password on website
+* 2. website asks for second factor (TOTP)
+* 3. TOTP app generates 6-digit (usually) code based on the secret key and current time using
+*    SHA1 (usually):
+*   - Secret key (code) is base32 encoded
+*   - base32 should be valid
+*   - base32 based on RFC 4648 https://datatracker.ietf.org/doc/html/rfc4648
+*   - it uses alphabet of 32 digits: A-Z, 2-7
+*   - in some cases padding (=) used - the length of the string % 8 (every 5 bits to 8 bit
+*   output)
+*   - correct base32 encoded string should decode without errors
+* 4. users enters the TOTP code into the website
+* 5. website verifies the code using the same secret key and TOTP generation algorithm (SHA1)
+* 6. success or fail
+*
+* The issue #3 was related to BASE32 method from data-encoding crate.
+* BASE32 has auto padding
+* BASE32_NOPAD - no padding
+* I did test code and notice that some codes produce errors - Invalid length with BASE32,
+* switching to BASE32_NOPAD fixed the issue.
+* It is interesting, I tried 2 crates: base32 and data-encoding.
+* base32 produces same results with padding set to true/false?!
+* data-encoding - different results.
+* I stick for now with data-encoding only because it more popular.
+*/
 pub fn add(
-    codex_path: &PathBuf,
+    path: &Path,
     alias: &str,
     code: &str,
-    unencrypt: &bool,
+    is_unencrypt: &bool,
     password: &Option<String>,
 ) -> Result<(), String> {
-    // make code uppercase to solve the bug #1
-    let binding = code.to_uppercase().replace("=", "");
-    let clean_code = binding.as_str();
+    let clean_code = sanitize_and_validate_code(code)?;
 
-    /* Validate code - check if it is a valid base32
-     * Here I beleive it is necessary to add some explanation for base32 and TOTP.
-     * Overtime I forgot what it does and my code comments are not good :/
-     * This is how it works:
-     * 1. user enters username and password on website
-     * 2. website asks for second factor (TOTP)
-     * 3. TOTP app generates 6-digit (usually) code based on the secret key and current time using
-     *    SHA1 (usually):
-     *   - Secret key (code) is base32 encoded
-     *   - base32 should be valid
-     *   - base32 based on RFC 4648 https://datatracker.ietf.org/doc/html/rfc4648
-     *   - it uses alphabet of 32 digits: A-Z, 2-7
-     *   - in some cases padding (=) used - the length of the string % 8 (every 5 bits to 8 bit
-     *   output)
-     *   - correct base32 encoded string should decode without errors
-     * 4. users enters the TOTP code into the website
-     * 5. website verifies the code using the same secret key and TOTP generation algorithm (SHA1)
-     * 6. success or fail
-     *
-     * The issue #3 was related to BASE32 method from data-encoding crate.
-     * BASE32 has auto padding
-     * BASE32_NOPAD - no padding
-     * I did test code and notice that some codes produce errors - Invalid length with BASE32,
-     * switching to BASE32_NOPAD fixed the issue.
-     * It is interesting, I tried 2 crates: base32 and data-encoding.
-     * base32 produces same results with padding set to true/false?!
-     * data-encoding - different results.
-     * I stick for now with data-encoding only because it more popular.
-     */
-    if let Err(e) = BASE32_NOPAD.decode(clean_code.as_bytes()) {
-        return Err(format!("Error data-encoding BASE32: {e}"));
+    // for Legacy file format
+    if alias.contains(':') {
+        return Err("Error: Alias cannot contain ':'".into());
+    }
+
+    if file::file_exists(path) && file::alias_exists(alias, path) {
+        return Err(format!("Error: Alias '{alias}' already exists."));
     }
 
     // encrypt if necessary
-    let secret = if *unencrypt {
+    let secret = if *is_unencrypt {
         clean_code.to_string()
     } else {
-        let pass = get_effective_password(password);
-        otp::encrypt(&clean_code.to_string(), &pass)
+        otp::encrypt(&clean_code.to_string(), &get_effective_password(password))
     };
 
     // serialize and save
-    let record = Record::new(alias.to_string(), secret.to_string(), *unencrypt);
+    let record = Record::new(alias.to_string(), secret.to_string(), *is_unencrypt);
     let json_data = serde_json::to_string(&record).map_err(|e| e.to_string())?;
 
-    if file::file_exists(codex_path) {
-        // check for duplicates
-        if file::alias_exists(alias, codex_path) {
-            return Err(format!("Alias '{}' already exists.", alias));
-        }
+    file::ensure_dir_exists(path).map_err(|e| e.to_string())?;
 
-        // create backup
-        file::create_routine_backup(codex_path)
+    if file::file_exists(path) {
+        file::create_routine_backup(path)
             .map_err(|e| format!("Warning: Backup failed: {}", e))?;
-
-        file::append_to_file(codex_path, &json_data).map_err(|e| e.to_string())?;
+        file::append_to_file(path, &json_data).map_err(|e| e.to_string())?;
     } else {
-        file::ensure_dir_exists(codex_path).map_err(|e| e.to_string())?;
-
-        file::overwrite_file(codex_path, &json_data)
+        file::overwrite_file(path, &json_data)
             .map_err(|e| e.to_string())?;
-        println!("Record saved to new codex");
     }
 
-    match otp::generate_otp(clean_code) {
+    println!("Record saved.");
+
+    match otp::generate_otp(&clean_code) {
         Ok(code) => println!("{code}"),
         Err(_) => println!("Error: failed to generate OTP"),
     }
@@ -118,85 +119,74 @@ pub fn add(
 }
 
 pub fn update_code(
-    codex_path: &PathBuf,
+    path: &Path,
     alias: &str,
     new_code: &str,
-    unenc: &bool,
+    is_unencrypt: &bool,
     password: &Option<String>,
-) {
-    // Validate the NEW code first (Fail fast)
-    let sanitized_code = new_code.to_uppercase().replace("=", "");
-    if let Err(e) = BASE32_NOPAD.decode(sanitized_code.as_bytes()) {
-        eprintln!("Error: Invalid Base32 code provided. Update aborted. ({e})");
-        return;
-    }
+) -> Result<(), String> {
+    let clean_code = sanitize_and_validate_code(new_code)?;
 
     // Check if the alias even exists before we do anything else
-    if !file::alias_exists(alias, codex_path) {
-        eprintln!("No record for '{alias}' has been located in the codex file.");
-        return;
+    if !file::alias_exists(alias, path) {
+        return Err(format!("No record for '{alias}' found."));
     }
 
     // Resolve password once (if needed)
-    let effective_pass = if *unenc {
+    let pass = if *is_unencrypt {
         None
     } else {
         Some(get_effective_password(password))
     };
 
     // Do the swap
-    if remove(codex_path, alias) {
-        let _ = add(codex_path, alias, &sanitized_code, unenc, &effective_pass);
-        println!("Record for '{alias}' successfully updated.");
-    }
+    remove(path, alias)?;
+    add(path, alias, &clean_code, is_unencrypt, &pass)?;
+    println!("Record for '{alias}' successfully updated.");
+    Ok(())
 }
 
-pub fn remove(path: &PathBuf, alias: &str) -> bool {
-    // create backup
-    if let Err(e) = file::create_routine_backup(path) {
-        eprintln!("Warning: Could not create backup file: {e}");
+pub fn remove(path: &Path, alias: &str) -> Result<(), String> {
+    file::create_routine_backup(path)
+        .map_err(|e| format!("Warning: Backup failed: {}", e))?;
+
+    let lines = file::read_file_to_vec(&path)
+        .map_err(|e| e.to_string())?;
+    let original_len = lines.len();
+
+    let filtered_lines: Vec<String> = lines.into_iter()
+        .filter(|l| {
+            Record::from_line(l)
+                .map(|r| r.alias != alias)
+                .unwrap_or(true)
+        })
+        .collect();
+
+    if filtered_lines.len() == original_len {
+        return Err(format!("Error: No record for '{alias}' found"));
     }
 
-    let lines = file::read_file_to_vec(&path).unwrap_or_default();
-    let mut new_lines: Vec<String> = Vec::new();
-    let mut found: bool = false;
-
-    for l in lines {
-        // hybrid parser from Record struct
-        if let Some(record) = Record::from_line(&l) {
-            if record.alias == alias {
-                found = true;
-                continue; // Skip this one
-            }
-        }
-        new_lines.push(l);
-    }
-
-    if found {
-        let data = new_lines.join("\n") + "\n";
-        file::overwrite_file(path, &data).expect("Failed to update codex");
-        println!("Record for {alias} removed.");
-    }
-    found
+    let data = filtered_lines.join("\n") + "\n";
+    file::overwrite_file(path, &data)
+        .map_err(|e| format!("Error: Failed to save changes: {e}"))?;
+    println!("Record for {alias} removed.");
+    Ok(())
 }
 
 pub fn ls(
-    codex_path: &PathBuf,
+    path: &Path,
     alias_filter: &Option<String>,
-    unencrypt: &bool,
+    is_unencrypt: &bool,
     password: &Option<String>,
     format: &OutputFormat,
-) {
-    let lines = file::read_file_to_vec(codex_path).unwrap_or_else(|_| {
-        eprintln!("Codex not found.");
-        std::process::exit(1);
-    });
-
-    let records: Vec<Record> = lines.iter().filter_map(|l| Record::from_line(l)).collect();
+) -> Result<(), String> {
+    let lines = file::read_file_to_vec(path)
+        .map_err(|e| "Codex not found.")?;
+    let records: Vec<Record> = lines.iter()
+        .filter_map(|l| Record::from_line(l)).collect();
 
     // apply search filter
-    let filtered_records: Vec<&Record> = records
-        .iter()
+    let filtered: Vec<&Record> = records.iter()
         .filter(|r| match alias_filter {
             // partial match
             Some(f) => r.alias.to_lowercase().contains(&f.to_lowercase()),
@@ -205,15 +195,12 @@ pub fn ls(
         })
         .collect();
 
-    if filtered_records.is_empty() {
-        if alias_filter.is_some() {
-            eprintln!("Alias not found.");
-            std::process::exit(1);
-        }
-        return;
+    if filtered.is_empty() {
+        return Err("Alias not found.".into());
     }
 
-    let needs_password = !*unencrypt && filtered_records.iter().any(|r| !r.is_unencrypted);
+    let needs_password = !*is_unencrypt && filtered.iter()
+        .any(|r| !r.is_unencrypted);
 
     let pass = if needs_password {
         get_effective_password(password)
@@ -223,55 +210,58 @@ pub fn ls(
 
     let rem = otp::get_remaining_seconds();
 
-    let mut output_data = Vec::new();
-    for record in &filtered_records {
-        let otp = get(record, &pass);
-        output_data.push((record, otp));
-    }
-
-    // handle output based on format
     match format {
-        OutputFormat::Json => {
-            let json_list: Vec<serde_json::Value> = output_data
-                .iter()
-                .map(|(r, otp)| {
-                    serde_json::json!({
-                        "alias": r.alias,
-                        "otp": otp,
-                        "remaining_secs": rem,
-                        "is_encrypted": !r.is_unencrypted,
-                        "created_at": r.created_at
-                    })
-                })
-                .collect();
-            println!("{}", serde_json::to_string_pretty(&json_list).unwrap());
-        }
-        OutputFormat::Table => {
-            if alias_filter.is_some() && filtered_records.len() == 1 {
-                // if specific alias requested, print only the OTP raw
-                if let Some((_, otp)) = output_data.first() {
-                    println!("{otp}");
-                }
-            } else {
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_else(|_| std::time::Duration::from_secs(0))
-                    .as_secs();
-
-                println!("Current System Unix Time: {}", now);
-                println!("Hint: If this is off by >30s, OTP codes will fail.");
-                println!("Compare this at https://www.unixtimestamp.com if codes fail.\n");
-
-                // print the full table
-                println!("{0: <15} | {1: <10} | {2: <4}", "Alias", "OTP", "Rem");
-                println!("{:-<15}-|-{:-<10}-|-{:-<4}", "", "", "");
-
-                for (record, otp) in output_data {
-                    println!("{0: <15} | {1: <10} | {2:}s", record.alias, otp, rem);
-                }
-            }
-        }
+        OutputFormat::Json => print_json(&filtered, &pass, rem),
+        OutputFormat::Table => print_table(&filtered, &pass, rem, alias_filter.is_some()),
     }
+
+    Ok(())
+}
+
+fn print_table(records: &[&Record], pass: &str, rem: u64, is_single_alias: bool) {
+    if is_single_alias && records.len() == 1 {
+        let secret = if records[0].is_unencrypted { 
+            Ok(records[0].secret.clone())
+        } else {
+            otp::decrypt(&records[0].secret, pass)
+        };
+        println!("{}", secret.and_then(|s| otp::generate_otp(&s)
+            .map_err(|_| otp::OtpError::InvalidBase32)).unwrap_or_else(|_| "Error".into()));
+        return;
+    }
+
+    println!("{0: <15} | {1: <10} | {2: <4}", "Alias", "OTP", "Rem");
+    println!("{:-<15}-|-{:-<10}-|-{:-<4}", "", "", "");
+    for r in records {
+        let secret = if r.is_unencrypted {
+            Ok(r.secret.clone())
+        } else {
+            otp::decrypt(&r.secret, pass)
+        };
+        let code = secret.and_then(|s| otp::generate_otp(&s)
+            .map_err(|_| otp::OtpError::InvalidBase32)).unwrap_or_else(|_| "Err".into());
+        println!("{0: <15} | {1: <10} | {2:}s", r.alias, code, rem);
+    }
+}
+
+fn print_json(records: &[&Record], pass: &str, rem: u64) {
+    let list: Vec<serde_json::Value> = records.iter().map(|r| {
+        let secret = if r.is_unencrypted {
+            Ok(r.secret.clone())
+        } else {
+            otp::decrypt(&r.secret, pass)
+        };
+        let code = secret.and_then(|s| otp::generate_otp(&s)
+            .map_err(|_| otp::OtpError::InvalidBase32)).unwrap_or_else(|_| "Error".into());
+        serde_json::json!({
+            "alias": r.alias,
+            "otp": code,
+            "remaining_secs": rem,
+            "is_encrypted": !r.is_unencrypted,
+            "created_at": r.created_at
+        })
+    }).collect();
+    println!("{}", serde_json::to_string_pretty(&list).unwrap());
 }
 
 pub fn migrate(path: &PathBuf) -> io::Result<()> {
@@ -302,48 +292,28 @@ pub fn migrate(path: &PathBuf) -> io::Result<()> {
 }
 
 pub fn rename(path: &PathBuf, old_alias: &str, new_alias: &str) -> Result<(), String> {
-    if file::alias_exists(new_alias, path) {
-        return Err(format!(
-            "The alias '{}' already exists. Choose a unique name.",
-            new_alias
-        ));
-    }
-
-    // For Legacy file format
+    // for Legacy file format
     if new_alias.contains(':') {
         return Err("The new alias cannot contain ':'".to_string());
     }
 
+    if file::alias_exists(new_alias, path) {
+        return Err(format!("Alias '{new_alias}' already exists."));
+    }
+
     // read the file
     let lines = file::read_file_to_vec(path).map_err(|e| e.to_string())?;
-    let mut found = false;
-    let mut updated_lines = Vec::new();
+    let mut target_record = lines.iter()
+        .filter_map(|l| Record::from_line(l))
+        .find(|r| r.alias == old_alias)
+        .ok_or_else(|| format!("Alias '{}' not found.", old_alias))?;
 
-    // process lines
-    for line in lines {
-        if let Some(mut record) = Record::from_line(&line) {
-            if record.alias == old_alias {
-                record.alias = new_alias.to_string(); // change the name
-                updated_lines.push(record.to_string()); // save the changed record
-                found = true;
-                continue;
-            }
-        }
-        updated_lines.push(line);
-    }
+    target_record.alias = new_alias.to_string();
 
-    if !found {
-        return Err(format!("Alias '{}' not found.", old_alias));
-    }
+    remove(path, old_alias)?;
 
-    // create backup
-    if let Err(e) = file::create_routine_backup(path) {
-        eprintln!("Warning: Could not create backup file: {e}");
-    }
-
-    // save back to file
-    let data = updated_lines.join("\n") + "\n";
-    file::overwrite_file(path, &data).map_err(|e| e.to_string())?;
+    let json_data = serde_json::to_string(&target_record).map_err(|e| e.to_string())?;
+    file::append_to_file(path, &json_data).map_err(|e| e.to_string())?;
 
     println!("Successfully renamed '{}' to '{}'", old_alias, new_alias);
     Ok(())

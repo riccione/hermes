@@ -50,9 +50,7 @@ fn run(command: Commands, codex_path: PathBuf) -> Result<(), String> {
         }
 
         Commands::Remove { alias } => {
-            if !cmd::remove(&codex_path, alias.as_str()) {
-                return Err(format!("Error: Could not find alias '{alias}'"));
-            }
+            cmd::remove(&codex_path, &alias)?; 
         }
 
         Commands::Update {
@@ -66,7 +64,7 @@ fn run(command: Commands, codex_path: PathBuf) -> Result<(), String> {
                 &code,
                 &encryption.unencrypt,
                 &encryption.password,
-            );
+            )?;
         }
 
         Commands::Rename {
@@ -87,8 +85,9 @@ fn run(command: Commands, codex_path: PathBuf) -> Result<(), String> {
                 &encryption.unencrypt,
                 &encryption.password,
                 &format,
-            );
+            )?;
         }
+
         Commands::Config {} => {
             if codex_path.exists() {
                 println!("{}", codex_path.display());
