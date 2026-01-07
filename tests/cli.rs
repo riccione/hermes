@@ -1,7 +1,6 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 use tempfile::NamedTempFile;
-use std::io::Write;
 
 const CODE: &str = "BQZH47HMIUUQOQVAXO3MCRUP3OGR3OIL";
 const ALIAS: &str = "test_simple";
