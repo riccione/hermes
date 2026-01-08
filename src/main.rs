@@ -5,6 +5,7 @@ mod cmd;
 mod file;
 mod models;
 mod otp;
+mod ui;
 
 use args::{Cli, Commands};
 use clap::Parser;
@@ -76,6 +77,7 @@ fn run(command: Commands, codex_path: PathBuf) -> Result<(), String> {
 
         Commands::Ls {
             alias,
+            quiet,
             format,
             encryption,
         } => {
@@ -85,6 +87,7 @@ fn run(command: Commands, codex_path: PathBuf) -> Result<(), String> {
                 &encryption.unencrypt,
                 &encryption.password,
                 &format,
+                quiet,
             )?;
         }
 
