@@ -2,6 +2,7 @@ use crate::args::OutputFormat;
 use crate::file;
 use crate::models::Record;
 use crate::otp;
+use crate::ui;
 use data_encoding::BASE32_NOPAD;
 use std::io;
 use std::path::{PathBuf, Path};
@@ -163,6 +164,7 @@ pub fn ls(
     is_unencrypt: &bool,
     password: &Option<String>,
     format: &OutputFormat,
+    quiet: bool,
 ) -> Result<(), String> {
     let lines = file::read_file_to_vec(path)
         .map_err(|_| "Codex not found.")?;
@@ -196,7 +198,11 @@ pub fn ls(
 
     match format {
         OutputFormat::Json => print_json(&filtered, &pass, rem),
-        OutputFormat::Table => print_table(&filtered, &pass, rem, alias_filter.is_some()),
+        OutputFormat::Table => print_table(&filtered,
+            &pass,
+            rem,
+            alias_filter.is_some(),
+            quiet),
     }
 
     Ok(())
@@ -214,9 +220,16 @@ fn get_otp_display(record: &Record, pass: &str) -> String {
         .unwrap_or_else(|_| "Error Invalid secret or decryption failed".to_string())
 }
 
-fn print_table(records: &[&Record], pass: &str, rem: u64, is_single_alias: bool) {
+fn print_table(
+    records: &[&Record],
+    pass: &str,
+    rem: u64,
+    is_single_alias: bool,
+    quiet: bool
+) {
     if is_single_alias && records.len() == 1 {
-        println!("{}", get_otp_display(records[0], pass));
+        let code = get_otp_display(records[0], pass);
+        ui::print_otp_with_progress(&code, rem, quiet);
         return;
     }
 
