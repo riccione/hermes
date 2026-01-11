@@ -97,6 +97,7 @@ Flags:
 * `-u`, `--unencrypt`: WARNING: Store the secret in plain text. Use for debugging only.
 * `--password`: WARNING: Using this flag leaves password in shell history.
 * `-q`, `--quiet`: Only for `ls -a <ALIAS>`. Do not display progress bar.
+* `-f [table, json]`, `--format [table, json]`: Only for `ls` command. Format output as table (default) or as JSON.
 
 ### Automatically copy OTP code to clipboard
 
