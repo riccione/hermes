@@ -9,7 +9,7 @@
 *** https://www.markdownguide.org/basic-syntax/#reference-style-links
 -->
 <div align="center">
-  <h3 align="center">Hermes - CLI OTP app</h3>
+  <h3 align="center">Hermes: CLI OTP app</h3>
 </div>
 
 <!-- TABLE OF CONTENTS -->
@@ -30,7 +30,7 @@
       </ul>
     </li>
     <li><a href="#usage">Usage</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#testing">Testing</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
@@ -41,18 +41,13 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-Simple cli OTP app written in Rust. Mainly for self education and self use.
-It uses several crates:
-- [https://crates.io/crates/clap](clap)
-- [https://crates.io/crates/magic-crypt](magic-crypt)
-- [https://crates.io/crates/data-encoding](data-encoding)
-- [https://crates.io/crates/totp-lite](totp-lite)
+Simple cli OTP app written in Rust.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-### Built With
-
-* RUST 1.85
+Build with:
+- [Clap](https://crates.io/crates/clap)
+- [Magic-crypt](https://crates.io/crates/magic-crypt)
+- [Data-encoding](https://crates.io/crates/data-encoding)
+- [Totp-lite](https://crates.io/crates/totp-lite)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -61,100 +56,77 @@ It uses several crates:
 
 ### Prerequisites
 
-To build install Rust compiler [https://www.rust-lang.org/](https://www.rust-lang.org/)
-
-For build - run:
-`cargo build --release`
-
-For tests - run:
-`cargo test -- --test-threads=1`
-
-By default, Rust's testing framework runs tests concurrently for improved performance. 
-However, this approach can sometimes cause tests to fail when they're dependent on 
-shared resources or are not designed to handle concurrent execution. 
-Currently, it seems that certain functionalities (add, update, remove) may not function correctly 
-when multiple requests are processed simultaneously.
-
-## TOTP verification
-- [https://authenticationtest.com/totpChallenge/](https://authenticationtest.com/totpChallenge/)
-- [https://www.verifyr.com/en/otp/check#totp](https://www.verifyr.com/en/otp/check#totp)
-- [https://totp.danhersam.com/](https://totp.danhersam.com/)
+* RUST 1.85+
 
 ### Installation
 
-No installation - portable, one executable file
+Build from source:
+`cargo build --release`
+
+The binary is located in [target/release/hermes](https://github.com/riccione/hermes/releases).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-Add new record -> creates a file "codex" in the current directory, 
-where alias and encrypted code is saved:
+Running without arguments shows help.
 
-`hermes add --alias <alias> --code <code>`
+There are 2 env variables:
 
-or
+* `HERMES_PASSWORD`: Password for codes.
+* `HERMES_PATH`: Path to codex file.
 
-`hermes add -a <alias> -c <code>`
+Commands:
 
-Currently alias should contain only alphanumeric symbols.
+* `add -a <ALIAS> -c <CODE> [OPTIONS]`: Add new record.
+* `remove -a <ALIAS> [OPTIONS]`: Remove record.
+* `update -a <ALIAS> -c <CODE> [OPTIONS]`: Update code by alias.
+* `rename <OLD ALIAS> <NEW ALIAS> [OPTIONS]`: Rename alias.
+* `ls [OPTIONS]`: Get all OTP codes.
+* `ls -a <ALIAS>`: Get OTP code by alias.
+* `ls -a <PARTIAL MATCH>`: Get OTP codes by partial match. 
+* `config`: Show location of the codex file.
+* `migrate`: Migrate legacy codex format to JSON.
 
-Remove record
+Flags:
 
-`hermes remove --alias <alias>`
+* `-a`, `--alias`: Alias.
+* `-c`, `--code`: Code aka Secret.
+* `-p`, `--path`: Custom path to the codex file.
+* `-u`, `--unencrypt`: WARNING: Store the secret in plain text. Use for debugging only.
+* `--password`: WARNING: Using this flag leaves password in shell history.
+* `-q`, `--quiet`: Only for `ls -a <ALIAS>`. Do not display progress bar.
 
-or
+### Automatically copy OTP code to clipboard
 
-`hermes remove -a <alias>`
+Wayland
+`hermes ls -a my_alias | wl-copy`
 
-Update code for existing alias
+X11
+`hermes ls -a my_alias | xclip -selection clipboard`
 
-`hermes update --alias <alias>`
-
-or
-
-`hermes update -a <alias>`
-
-Get OTP by alias
-
-`hermes ls --alias <alias>`
-
-or
-
-`hermes ls -a <alias>`
-
-Get all OTP codes
-
-`hermes ls`
-
-Show location of codex file, where actually all codes are saved
-
-`hermes config`
-
-By default hermes encrypts code with AES-256, if you want to store code as a
-plain text pass `--unencrypt` or `-u`.
+MacOS
+`hermes ls -a my_alias | pbcopy`
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- ROADMAP -->
-## Roadmap
+<!-- Testing -->
+## Testing
 
-- [ ] Refactor args=clap code
-- [ ] Add locks
-- [ ] Add unit tests
-- [ ] Improve integration tests
-- [ ] Refactor code using best Rust practices
+`cargo test`
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+### TOTP verification
+- [https://authenticationtest.com/totpChallenge/](https://authenticationtest.com/totpChallenge/)
+- [https://www.verifyr.com/en/otp/check#totp](https://www.verifyr.com/en/otp/check#totp)
+- [https://totp.danhersam.com/](https://totp.danhersam.com/)
 
 <!-- CONTRIBUTING -->
 ## Contributing
 
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
+If you have a suggestion that would make this better, please fork the repo and
+create a pull request. You can also simply open an issue with the tag
+"enhancement".  Don't forget to give the project a star! Thanks again!
 
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
@@ -174,7 +146,6 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 <!-- CONTACT -->
 ## Contact
 
-No reason to contact with me ^_-.
 Just create an issue if you need something.
 
 Project Link:
