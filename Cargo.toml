@@ -1,6 +1,6 @@
 [package]
 name = "hermes"
-version = "0.2.6"
+version = "0.3.0"
 edition = "2021"
 description = "Hermes: CLI OTP manager app"
 homepage = "https://github.com/riccione/hermes"
@@ -16,13 +16,13 @@ panic = "abort"
 opt-level = "z"
 
 [dependencies]
-clap = { version = "4.5.34", features = ["derive"] }
-data-encoding = "2.8.0"
+clap = { version = "4.5.54", features = ["derive"] }
+data-encoding = "2.10.0"
 dirs = "6.0.0"
 magic-crypt = "4.0.1"
-rpassword = "7.3.1"
+rpassword = "7.4.0"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.148"
+serde_json = "1.0.149"
 totp-lite = "2.0.1"
 
 [dev-dependencies]
